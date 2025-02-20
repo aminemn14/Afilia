@@ -44,6 +44,7 @@ export default function LoginScreen() {
             value={email}
             onChangeText={setEmail}
             placeholder="Entrer votre email"
+            placeholderTextColor={Colors.gray600}
             keyboardType="email-address"
             autoCapitalize="none"
           />
@@ -57,6 +58,7 @@ export default function LoginScreen() {
               value={password}
               onChangeText={setPassword}
               placeholder="Entrer votre mot de passe"
+              placeholderTextColor={Colors.gray600}
               secureTextEntry={!showPassword}
             />
             <TouchableOpacity

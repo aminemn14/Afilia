@@ -101,6 +101,7 @@ export default function HomeScreen() {
           <TextInput
             style={styles.searchInput}
             placeholder="Rechercher un groupe..."
+            placeholderTextColor={Colors.gray600}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />

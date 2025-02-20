@@ -79,6 +79,7 @@ export default function SignUpScreen() {
               setFormData({ ...formData, username: text })
             }
             placeholder="Choisir un nom d'utilisateur"
+            placeholderTextColor={Colors.gray600}
             autoCapitalize="none"
           />
         </View>
@@ -90,6 +91,7 @@ export default function SignUpScreen() {
             value={formData.email}
             onChangeText={(text) => setFormData({ ...formData, email: text })}
             placeholder="Entrer votre email"
+            placeholderTextColor={Colors.gray600}
             keyboardType="email-address"
             autoCapitalize="none"
           />
@@ -105,6 +107,7 @@ export default function SignUpScreen() {
                 setFormData({ ...formData, password: text })
               }
               placeholder="Créer un mot de passe"
+              placeholderTextColor={Colors.gray600}
               secureTextEntry={!showPassword}
             />
             <TouchableOpacity
@@ -133,6 +136,7 @@ export default function SignUpScreen() {
                 setFormData({ ...formData, confirmPassword: text })
               }
               placeholder="Confirmer votre mot de passe"
+              placeholderTextColor={Colors.gray600}
               secureTextEntry={!showConfirmPassword}
             />
             <TouchableOpacity
