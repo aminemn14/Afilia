@@ -1,59 +1,78 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { Link } from 'expo-router';
+import {
+  SafeAreaView,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Platform,
+} from 'react-native';
+import { useRouter } from 'expo-router';
 import Colors from '../constants/Colors';
+import LottieView from 'lottie-react-native';
+import welcomeAnimation from '@/assets/media/welcome-page-animation.json';
 
 export default function WelcomeScreen() {
+  const router = useRouter();
+
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Bienvenue sur Afilia</Text>
-        <Text style={styles.subtitle}>Se connecter par le sport</Text>
-      </View>
-
-      <View style={styles.features}>
-        <Image
-          source={{
-            uri: 'https://images.unsplash.com/photo-1526506118085-60ce8714f8c5',
-          }}
-          style={styles.featureImage}
-        />
-        <View style={styles.featureTextContainer}>
-          <Text style={styles.featureTitle}>Trouvez vos partenaires</Text>
-          <Text style={styles.featureDescription}>
-            Rejoignez des groupes sportifs ou créez le vôtre. Entrez en contact
-            avec des joueurs à proximité et commencez à jouer !
-          </Text>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Bienvenue sur Afilia</Text>
+          <Text style={styles.subtitle}>Se connecter par le sport</Text>
         </View>
-      </View>
 
-      <View style={styles.buttonContainer}>
-        <Link href="/login" asChild>
-          <TouchableOpacity style={[styles.button, styles.loginButton]}>
+        <View style={styles.features}>
+          <LottieView
+            source={welcomeAnimation}
+            autoPlay
+            loop
+            style={styles.animation}
+          />
+          <View style={styles.featureTextContainer}>
+            <Text style={styles.featureTitle}>Trouvez vos partenaires</Text>
+            <Text style={styles.featureDescription}>
+              Rejoignez ou créez des groupes sportifs et connectez-vous avec des
+              joueurs proches.
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={[styles.button, styles.loginButton]}
+            onPress={() => router.push('/login')}
+          >
             <Text style={styles.buttonText}>Connexion</Text>
           </TouchableOpacity>
-        </Link>
-        <Link href="/signup" asChild>
-          <TouchableOpacity style={[styles.button, styles.signupButton]}>
+          <TouchableOpacity
+            style={[styles.button, styles.signupButton]}
+            onPress={() => router.push('/signup')}
+          >
             <Text style={[styles.buttonText, styles.signupButtonText]}>
               S'inscrire
             </Text>
           </TouchableOpacity>
-        </Link>
+        </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: Colors.background,
-    padding: 20,
+  },
+  container: {
+    flex: 1,
+    paddingHorizontal: 20,
+    justifyContent: 'space-between',
   },
   header: {
-    marginTop: 60,
     alignItems: 'center',
+    marginTop: Platform.OS === 'android' ? 30 : 60,
   },
   title: {
     fontSize: 32,
@@ -64,21 +83,21 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 18,
     color: Colors.gray600,
-    marginBottom: 40,
+    marginBottom: 20,
   },
   features: {
     flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  featureImage: {
-    width: '100%',
-    height: 250,
-    borderRadius: 20,
-    marginBottom: 24,
+  animation: {
+    width: 320,
+    height: 320,
   },
   featureTextContainer: {
+    marginTop: 20,
+    paddingHorizontal: 20,
     alignItems: 'center',
-    padding: 20,
   },
   featureTitle: {
     fontSize: 24,
@@ -93,7 +112,8 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   buttonContainer: {
-    marginBottom: 40,
+    marginTop: 60,
+    marginBottom: 20,
   },
   button: {
     width: '100%',
