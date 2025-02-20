@@ -8,7 +8,8 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
-import { Link, router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import Colors from '../constants/Colors';
 
 export default function SignUpScreen() {
@@ -18,6 +19,8 @@ export default function SignUpScreen() {
     password: '',
     confirmPassword: '',
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSignUp = async () => {
     try {
@@ -57,7 +60,11 @@ export default function SignUpScreen() {
       style={styles.container}
       contentContainerStyle={styles.contentContainer}
     >
-      <View style={styles.header}>
+      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <Ionicons name="chevron-back" size={28} color={Colors.primary} />
+      </TouchableOpacity>
+
+      <View style={styles.headerTextContainer}>
         <Text style={styles.title}>Créer un compte</Text>
         <Text style={styles.subtitle}>Rejoindre la communauté Afilia</Text>
       </View>
@@ -90,15 +97,27 @@ export default function SignUpScreen() {
 
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Mot de passe</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.password}
-            onChangeText={(text) =>
-              setFormData({ ...formData, password: text })
-            }
-            placeholder="Créer un mot de passe"
-            secureTextEntry
-          />
+          <View style={styles.inputWithIconContainer}>
+            <TextInput
+              style={[styles.input, styles.inputWithIcon]}
+              value={formData.password}
+              onChangeText={(text) =>
+                setFormData({ ...formData, password: text })
+              }
+              placeholder="Créer un mot de passe"
+              secureTextEntry={!showPassword}
+            />
+            <TouchableOpacity
+              style={styles.iconContainer}
+              onPress={() => setShowPassword(!showPassword)}
+            >
+              <Ionicons
+                name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                size={24}
+                color={Colors.gray600}
+              />
+            </TouchableOpacity>
+          </View>
           <Text style={styles.helperText}>
             Doit comporter au moins 8 caractères
           </Text>
@@ -106,15 +125,27 @@ export default function SignUpScreen() {
 
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Confirmer le mot de passe</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.confirmPassword}
-            onChangeText={(text) =>
-              setFormData({ ...formData, confirmPassword: text })
-            }
-            placeholder="Confirmer votre mot de passe"
-            secureTextEntry
-          />
+          <View style={styles.inputWithIconContainer}>
+            <TextInput
+              style={[styles.input, styles.inputWithIcon]}
+              value={formData.confirmPassword}
+              onChangeText={(text) =>
+                setFormData({ ...formData, confirmPassword: text })
+              }
+              placeholder="Confirmer votre mot de passe"
+              secureTextEntry={!showConfirmPassword}
+            />
+            <TouchableOpacity
+              style={styles.iconContainer}
+              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+            >
+              <Ionicons
+                name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'}
+                size={24}
+                color={Colors.gray600}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <TouchableOpacity style={styles.signupButton} onPress={handleSignUp}>
@@ -123,11 +154,9 @@ export default function SignUpScreen() {
 
         <View style={styles.loginContainer}>
           <Text style={styles.loginText}>Vous avez déjà un compte ? </Text>
-          <Link href="/login" asChild>
-            <TouchableOpacity>
-              <Text style={styles.loginLink}>Se connecter</Text>
-            </TouchableOpacity>
-          </Link>
+          <TouchableOpacity onPress={() => router.push('/login')}>
+            <Text style={styles.loginLink}>Se connecter</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </ScrollView>
@@ -142,19 +171,27 @@ const styles = StyleSheet.create({
   contentContainer: {
     padding: 20,
   },
-  header: {
-    marginTop: 60,
-    marginBottom: 40,
+  backButton: {
+    position: 'absolute',
+    top: 60,
+    left: 20,
+    zIndex: 10,
+    padding: 10,
+  },
+  headerTextContainer: {
+    marginTop: 120,
+    marginBottom: 30,
+    alignItems: 'flex-start',
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
     color: Colors.text,
-    marginBottom: 8,
   },
   subtitle: {
     fontSize: 18,
     color: Colors.gray600,
+    marginTop: 4,
   },
   form: {
     flex: 1,
@@ -176,6 +213,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.gray200,
   },
+  inputWithIconContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.gray200,
+    backgroundColor: Colors.white,
+  },
+  inputWithIcon: {
+    flex: 1,
+    borderWidth: 0,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+  },
+  iconContainer: {
+    paddingHorizontal: 12,
+  },
   helperText: {
     fontSize: 12,
     color: Colors.gray600,
@@ -187,8 +241,8 @@ const styles = StyleSheet.create({
     height: 56,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
     marginTop: 12,
+    marginBottom: 24,
   },
   signupButtonText: {
     color: Colors.white,
