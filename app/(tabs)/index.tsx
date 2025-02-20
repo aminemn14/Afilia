@@ -90,7 +90,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Découvrir des groupes</Text>
+        <Text style={styles.title}>Trouver un groupe</Text>
         <View style={styles.searchContainer}>
           <Ionicons
             name="search"
