@@ -1,9 +1,21 @@
 export interface User {
   id: string;
+  firstname: string;
+  lastname: string;
   email: string;
   username: string;
-  avatar_url?: string;
-  created_at: string;
+  password: string;
+  role: 'user' | 'admin';
+  age: number;
+  sexe: 'homme' | 'femme';
+  phoneNumber: string;
+  birthDate: string;
+  createdAt: string;
+}
+
+export interface Profile extends User {
+  bio: string;
+  avatar: string;
 }
 
 export interface Event {
