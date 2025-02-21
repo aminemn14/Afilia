@@ -10,7 +10,7 @@ import {
 import { useRouter } from 'expo-router';
 import Colors from '../constants/Colors';
 import LottieView from 'lottie-react-native';
-import welcomeAnimation from '@/assets/media/welcome-page-animation.json';
+import welcomeAnimation from '@/assets/media/welcome-afilia-animation.json';
 
 export default function WelcomeScreen() {
   const router = useRouter();
@@ -20,7 +20,9 @@ export default function WelcomeScreen() {
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>Bienvenue sur Afilia</Text>
-          <Text style={styles.subtitle}>Se connecter par le sport</Text>
+          <Text style={styles.subtitle}>
+            Découvrez et réservez vos événements autour de vous
+          </Text>
         </View>
 
         <View style={styles.features}>
@@ -31,10 +33,10 @@ export default function WelcomeScreen() {
             style={styles.animation}
           />
           <View style={styles.featureTextContainer}>
-            <Text style={styles.featureTitle}>Trouvez vos partenaires</Text>
+            <Text style={styles.featureTitle}>Des événements vibrants</Text>
             <Text style={styles.featureDescription}>
-              Rejoignez ou créez des groupes sportifs et connectez-vous avec des
-              joueurs proches.
+              Explorez les activités près de chez vous et réservez en quelques
+              clics !
             </Text>
           </View>
         </View>
@@ -79,11 +81,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: Colors.text,
     marginBottom: 8,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 18,
     color: Colors.gray600,
     marginBottom: 20,
+    textAlign: 'center',
   },
   features: {
     flex: 1,
@@ -104,6 +108,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: Colors.text,
     marginBottom: 12,
+    textAlign: 'center',
   },
   featureDescription: {
     fontSize: 16,

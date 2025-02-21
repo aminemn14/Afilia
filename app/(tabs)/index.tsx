@@ -10,15 +10,16 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { MotiView } from 'moti';
 import Colors from '../constants/Colors';
-import type { SportGroup } from '@/app/types';
+import type { Event } from '@/app/types';
 
-const MOCK_GROUPS: SportGroup[] = [
+const MOCK_EVENTS: Event[] = [
   {
     id: '1',
-    name: 'Five Match',
-    sport_type: 'football',
-    current_participants: 8,
-    required_participants: 10,
+    name: 'Concert Rock',
+    event_type: 'concert',
+    current_participants: 50,
+    max_participants: 100,
+    remaining_participants: 50,
     location_id: '1',
     creator_id: '1',
     created_at: new Date().toISOString(),
@@ -26,10 +27,11 @@ const MOCK_GROUPS: SportGroup[] = [
   },
   {
     id: '2',
-    name: 'Basketball 3v3',
-    sport_type: 'basketball',
-    current_participants: 4,
-    required_participants: 6,
+    name: 'Théâtre Classique',
+    event_type: 'theatre',
+    current_participants: 30,
+    max_participants: 50,
+    remaining_participants: 20,
     location_id: '2',
     creator_id: '2',
     created_at: new Date().toISOString(),
@@ -37,30 +39,24 @@ const MOCK_GROUPS: SportGroup[] = [
   },
 ];
 
-const SPORT_TYPES = ['Tous', 'Football', 'Basketball', 'Tennis'];
+const EVENT_TYPES = ['Tous', 'Théâtre', 'Concert', 'Opéra', 'Spectacle'];
 
 export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSport, setSelectedSport] = useState('Tous');
-  const [groups, setGroups] = useState(MOCK_GROUPS);
+  const [selectedType, setSelectedType] = useState('Tous');
+  const [events, setEvents] = useState(MOCK_EVENTS);
 
-  const filteredGroups = groups.filter((group) => {
-    const matchesSearch = group.name
+  const filteredEvents = events.filter((event) => {
+    const matchesSearch = event.name
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
-    const matchesSport =
-      selectedSport === 'Tous' ||
-      group.sport_type.toLowerCase() === selectedSport.toLowerCase();
-    return matchesSearch && matchesSport;
+    const matchesType =
+      selectedType === 'Tous' ||
+      event.event_type.toLowerCase() === selectedType.toLowerCase();
+    return matchesSearch && matchesType;
   });
 
-  const renderGroupCard = ({
-    item,
-    index,
-  }: {
-    item: SportGroup;
-    index: number;
-  }) => (
+  const renderEventCard = ({ item, index }: { item: Event; index: number }) => (
     <MotiView
       from={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
@@ -68,21 +64,21 @@ export default function HomeScreen() {
       style={styles.card}
     >
       <View style={styles.cardHeader}>
-        <Text style={styles.groupName}>{item.name}</Text>
-        <View style={styles.sportBadge}>
-          <Text style={styles.sportType}>{item.sport_type}</Text>
+        <Text style={styles.eventName}>{item.name}</Text>
+        <View style={styles.eventBadge}>
+          <Text style={styles.eventType}>{item.event_type}</Text>
         </View>
       </View>
 
       <View style={styles.participantsContainer}>
         <Ionicons name="people" size={20} color={Colors.text} />
         <Text style={styles.participantsText}>
-          {item.current_participants}/{item.required_participants} participants
+          {item.remaining_participants} places restantes
         </Text>
       </View>
 
       <TouchableOpacity style={styles.joinButton}>
-        <Text style={styles.joinButtonText}>Rejoindre le groupe</Text>
+        <Text style={styles.joinButtonText}>Participer</Text>
       </TouchableOpacity>
     </MotiView>
   );
@@ -90,7 +86,8 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Trouver un groupe</Text>
+        <Text style={styles.title}>Bienvenue Jean !</Text>
+        <Text style={styles.subTitle}>Trouver un événement</Text>
         <View style={styles.searchContainer}>
           <Ionicons
             name="search"
@@ -100,7 +97,7 @@ export default function HomeScreen() {
           />
           <TextInput
             style={styles.searchInput}
-            placeholder="Rechercher un groupe..."
+            placeholder="Rechercher..."
             placeholderTextColor={Colors.gray600}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -112,20 +109,20 @@ export default function HomeScreen() {
         <FlatList
           horizontal
           showsHorizontalScrollIndicator={false}
-          data={SPORT_TYPES}
+          data={EVENT_TYPES}
           keyExtractor={(item) => item}
           renderItem={({ item }) => (
             <TouchableOpacity
               style={[
                 styles.filterButton,
-                selectedSport === item && styles.filterButtonActive,
+                selectedType === item && styles.filterButtonActive,
               ]}
-              onPress={() => setSelectedSport(item)}
+              onPress={() => setSelectedType(item)}
             >
               <Text
                 style={[
                   styles.filterButtonText,
-                  selectedSport === item && styles.filterButtonTextActive,
+                  selectedType === item && styles.filterButtonTextActive,
                 ]}
               >
                 {item}
@@ -137,10 +134,10 @@ export default function HomeScreen() {
       </View>
 
       <FlatList
-        data={filteredGroups}
-        renderItem={renderGroupCard}
+        data={filteredEvents}
+        renderItem={renderEventCard}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.groupsList}
+        contentContainerStyle={styles.eventsList}
         showsVerticalScrollIndicator={false}
       />
     </View>
@@ -161,6 +158,11 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
     color: Colors.text,
+    marginBottom: 8,
+  },
+  subTitle: {
+    fontSize: 20,
+    color: Colors.gray800,
     marginBottom: 16,
   },
   searchContainer: {
@@ -203,7 +205,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
     fontWeight: '600',
   },
-  groupsList: {
+  eventsList: {
     padding: 20,
   },
   card: {
@@ -223,18 +225,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  groupName: {
+  eventName: {
     fontSize: 18,
     fontWeight: '600',
     color: Colors.text,
   },
-  sportBadge: {
+  eventBadge: {
     backgroundColor: Colors.secondary,
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
   },
-  sportType: {
+  eventType: {
     color: Colors.text,
     fontSize: 12,
     fontWeight: '600',

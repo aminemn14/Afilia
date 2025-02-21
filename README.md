@@ -1,13 +1,13 @@
 # Afilia
 
-Afilia est une application mobile développée avec React Native - Expo, conçue pour rassembler les passionnés de sport et faciliter l'organisation d'activités physiques en groupe. Que vous souhaitiez trouver un partenaire d'entraînement ou organiser une session de sport entre amis, Afilia vous connecte avec une communauté active et motivée.
+Afilia est une application mobile développée avec React Native et Expo, conçue pour recenser les événements culturels et de divertissement près de chez vous. Que vous souhaitiez assister à un concert, une pièce de théâtre, visiter un musée ou découvrir une exposition, Afilia vous permet de parcourir l’agenda culturel local et de réserver vos places en quelques clics.
 
 ## Fonctionnalités
 
-- **Recherche d'événements sportifs** : Découvrez et rejoignez des activités sportives près de chez vous.
-- **Création d'événements** : Organisez vos propres sessions sportives et invitez d'autres utilisateurs.
-- **Messagerie intégrée** : Communiquez facilement avec les participants pour coordonner vos activités.
-- **Interface conviviale** : Profitez d'une expérience utilisateur intuitive et réactive.
+- **Recherche d'événements culturels** : Parcourez une sélection d’événements (concerts, théâtres, musées, expositions, etc.) organisés dans votre région.
+- **Création d'événements** : Réservez facilement vos places pour les sorties qui vous intéressent.
+- **Messagerie intégrée** : Consultez les informations clés (lieu, date, nombre de places disponibles, etc.) pour chaque événement.
+- **Interface conviviale** : Profitez d’une expérience utilisateur fluide et moderne pour ne rien manquer de l’actualité culturelle.
 
 ## Technologies utilisées
 

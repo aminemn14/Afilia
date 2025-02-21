@@ -8,42 +8,95 @@ import {
 } from 'react-native';
 import MapView, { Marker, Callout } from 'react-native-maps';
 import { MotiView } from 'moti';
+
+// Icons from different libraries
 import { Ionicons } from '@expo/vector-icons';
+import { BuildingLibraryIcon } from 'react-native-heroicons/outline';
+import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
+import Entypo from 'react-native-vector-icons/Entypo';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+
 import Colors from '../constants/Colors';
-import type { Location, SportGroup } from '@/app/types';
+import type { Location, Event } from '@/app/types';
+
+function getIconForEventType(type: string, size: number, color: string) {
+  switch (type.toLowerCase()) {
+    case 'chorale':
+      return <Ionicons name="musical-notes" size={size} color={color} />;
+    case 'museum':
+      return <BuildingLibraryIcon size={size} color={color} />;
+    case 'theatre':
+      return <FontAwesome5 name="theater-masks" size={size} color={color} />;
+    case 'concert':
+      return <Entypo name="modern-mic" size={size} color={color} />;
+    case 'exposition':
+      return <MaterialIcons name="local-see" size={size} color={color} />;
+    default:
+      return <Ionicons name="location-outline" size={size} color={color} />;
+  }
+}
 
 const MOCK_LOCATIONS: Location[] = [
   {
     id: '1',
-    name: 'Terrain Adolphe Max',
+    name: 'Salle des Concerts',
     latitude: 50.64669971162,
     longitude: 3.051274251686708,
     address: "98 Façade de l'Esplanade",
     city: 'Lille',
     zipcode: '59000',
-    type: 'outdoor',
-    sport_type: 'football',
+    event_type: 'concert',
   },
   {
     id: '2',
-    name: 'Hoops Factory',
+    name: 'Théâtre de la Ville',
     latitude: 50.63794445148652,
     longitude: 3.0969858745452283,
     address: '64 Rue Louis Braille',
     city: 'Lille',
     zipcode: '59000',
-    type: 'indoor',
-    sport_type: 'basketball',
+    event_type: 'theatre',
+  },
+  {
+    id: '3',
+    name: "Musée d'Art",
+    latitude: 50.64,
+    longitude: 3.05,
+    address: '12 Rue du Louvre',
+    city: 'Lille',
+    zipcode: '59000',
+    event_type: 'museum',
+  },
+  {
+    id: '4',
+    name: 'Centre Chorale',
+    latitude: 50.635,
+    longitude: 3.055,
+    address: '5 Avenue de la Musique',
+    city: 'Lille',
+    zipcode: '59000',
+    event_type: 'chorale',
+  },
+  {
+    id: '5',
+    name: "Galerie d'Exposition",
+    latitude: 50.642,
+    longitude: 3.045,
+    address: '20 Rue des Arts',
+    city: 'Lille',
+    zipcode: '59000',
+    event_type: 'exposition',
   },
 ];
 
-const MOCK_GROUPS: SportGroup[] = [
+const MOCK_EVENTS: Event[] = [
   {
     id: '1',
-    name: 'Five Match',
-    sport_type: 'football',
-    current_participants: 8,
-    required_participants: 10,
+    name: 'Concert Rock',
+    event_type: 'concert',
+    current_participants: 50,
+    max_participants: 100,
+    remaining_participants: 50,
     location_id: '1',
     creator_id: '1',
     created_at: new Date().toISOString(),
@@ -51,12 +104,49 @@ const MOCK_GROUPS: SportGroup[] = [
   },
   {
     id: '2',
-    name: 'Basketball 3v3',
-    sport_type: 'basketball',
-    current_participants: 4,
-    required_participants: 6,
+    name: 'Théâtre Classique',
+    event_type: 'theatre',
+    current_participants: 30,
+    max_participants: 50,
+    remaining_participants: 20,
     location_id: '2',
     creator_id: '2',
+    created_at: new Date().toISOString(),
+    status: 'open',
+  },
+  {
+    id: '3',
+    name: "Exposition d'Art Moderne",
+    event_type: 'exposition',
+    current_participants: 80,
+    max_participants: 120,
+    remaining_participants: 40,
+    location_id: '5',
+    creator_id: '3',
+    created_at: new Date().toISOString(),
+    status: 'open',
+  },
+  {
+    id: '4',
+    name: 'Visite au Musée',
+    event_type: 'museum',
+    current_participants: 20,
+    max_participants: 40,
+    remaining_participants: 20,
+    location_id: '3',
+    creator_id: '4',
+    created_at: new Date().toISOString(),
+    status: 'open',
+  },
+  {
+    id: '5',
+    name: "Chorale d'été",
+    event_type: 'chorale',
+    current_participants: 15,
+    max_participants: 30,
+    remaining_participants: 15,
+    location_id: '4',
+    creator_id: '5',
     created_at: new Date().toISOString(),
     status: 'open',
   },
@@ -67,8 +157,8 @@ export default function MapScreen() {
     null
   );
 
-  const getGroupsAtLocation = (locationId: string) => {
-    return MOCK_GROUPS.filter((group) => group.location_id === locationId);
+  const getEventsAtLocation = (locationId: string) => {
+    return MOCK_EVENTS.filter((event) => event.location_id === locationId);
   };
 
   return (
@@ -92,21 +182,7 @@ export default function MapScreen() {
             onPress={() => setSelectedLocation(location)}
           >
             <View style={styles.markerContainer}>
-              {(() => {
-                const iconExists = (
-                  Ionicons.glyphMap as Record<string, number>
-                )[location.sport_type];
-                const iconName = iconExists
-                  ? location.sport_type
-                  : 'location-outline';
-                return (
-                  <Ionicons
-                    name={iconName as any}
-                    size={24}
-                    color={Colors.primary}
-                  />
-                );
-              })()}
+              {getIconForEventType(location.event_type, 24, Colors.primary)}
             </View>
             <Callout>
               <View style={styles.callout}>
@@ -144,16 +220,16 @@ export default function MapScreen() {
             {selectedLocation.city} - {selectedLocation.zipcode}
           </Text>
 
-          <View style={styles.groupsContainer}>
-            {getGroupsAtLocation(selectedLocation.id).length === 0 ? (
-              <Text style={styles.noGroupText}>Aucun groupe Actif</Text>
+          <View style={styles.eventsContainer}>
+            {getEventsAtLocation(selectedLocation.id).length === 0 ? (
+              <Text style={styles.noEventText}>Aucun événement Actif</Text>
             ) : (
               <>
-                <Text style={styles.groupsTitle}>Groupes Actifs</Text>
-                {getGroupsAtLocation(selectedLocation.id).map((group) => (
-                  <View key={group.id} style={styles.groupCard}>
-                    <View style={styles.groupInfo}>
-                      <Text style={styles.groupName}>{group.name}</Text>
+                <Text style={styles.eventsTitle}>Événements Actifs</Text>
+                {getEventsAtLocation(selectedLocation.id).map((event) => (
+                  <View key={event.id} style={styles.eventCard}>
+                    <View style={styles.eventInfo}>
+                      <Text style={styles.eventName}>{event.name}</Text>
                       <View style={styles.participantsContainer}>
                         <Ionicons
                           name="people"
@@ -161,23 +237,18 @@ export default function MapScreen() {
                           color={Colors.primary}
                         />
                         <Text style={styles.participantsText}>
-                          {group.current_participants}/
-                          {group.required_participants}
+                          {event.remaining_participants} places restantes
                         </Text>
                       </View>
                     </View>
                     <TouchableOpacity style={styles.joinButton}>
-                      <Text style={styles.joinButtonText}>Rejoindre</Text>
+                      <Text style={styles.joinButtonText}>Participer</Text>
                     </TouchableOpacity>
                   </View>
                 ))}
               </>
             )}
           </View>
-
-          <TouchableOpacity style={styles.createGroupButton}>
-            <Text style={styles.createGroupButtonText}>Créer mon groupe</Text>
-          </TouchableOpacity>
         </MotiView>
       )}
     </View>
@@ -194,7 +265,7 @@ const styles = StyleSheet.create({
   },
   markerContainer: {
     backgroundColor: Colors.white,
-    borderRadius: 20,
+    borderRadius: 150,
     padding: 8,
     borderWidth: 2,
     borderColor: Colors.primary,
@@ -228,19 +299,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
   },
-  createGroupButton: {
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  createGroupButtonText: {
-    color: Colors.white,
-    fontSize: 16,
-    fontWeight: '600',
-  },
   locationHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -265,22 +323,22 @@ const styles = StyleSheet.create({
     color: Colors.gray600,
     marginBottom: 20,
   },
-  groupsContainer: {
+  eventsContainer: {
     gap: 12,
   },
-  groupsTitle: {
+  eventsTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: Colors.text,
     marginBottom: 8,
   },
-  noGroupText: {
+  noEventText: {
     fontSize: 16,
     color: Colors.gray700,
     textAlign: 'center',
     marginVertical: 8,
   },
-  groupCard: {
+  eventCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -288,10 +346,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
   },
-  groupInfo: {
+  eventInfo: {
     flex: 1,
   },
-  groupName: {
+  eventName: {
     fontSize: 16,
     fontWeight: '500',
     color: Colors.text,
@@ -307,13 +365,13 @@ const styles = StyleSheet.create({
     color: Colors.gray700,
   },
   joinButton: {
-    backgroundColor: Colors.secondary,
+    backgroundColor: Colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
   },
   joinButtonText: {
-    color: Colors.text,
+    color: Colors.white,
     fontSize: 14,
     fontWeight: '600',
   },

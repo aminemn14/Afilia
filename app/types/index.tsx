@@ -6,12 +6,13 @@ export interface User {
   created_at: string;
 }
 
-export interface SportGroup {
+export interface Event {
   id: string;
   name: string;
-  sport_type: string;
+  event_type: string;
   current_participants: number;
-  required_participants: number;
+  max_participants: number;
+  remaining_participants: number;
   location_id: string;
   creator_id: string;
   created_at: string;
@@ -26,8 +27,7 @@ export interface Location {
   address: string;
   city: string;
   zipcode: string;
-  type: 'outdoor' | 'indoor';
-  sport_type: string;
+  event_type: 'theatre' | 'concert' | 'chorale' | 'exposition' | 'museum';
 }
 
 export interface Message {
@@ -38,3 +38,9 @@ export interface Message {
   created_at: string;
   read: boolean;
 }
+
+const TypesPage = () => {
+  return <div>This page is not intended for display.</div>;
+};
+
+export default TypesPage;
