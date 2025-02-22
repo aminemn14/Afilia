@@ -33,5 +33,5 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-# backend
-backend/
+# env variables
+.env
