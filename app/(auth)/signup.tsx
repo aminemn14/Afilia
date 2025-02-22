@@ -6,28 +6,78 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
-  ScrollView,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import Colors from '../constants/Colors';
 
 export default function SignUpScreen() {
+  // Calcul de la date maximale autorisée (au moins 12 ans)
+  const maxAllowedDate = new Date();
+  maxAllowedDate.setFullYear(maxAllowedDate.getFullYear() - 12);
+
   const [formData, setFormData] = useState({
     username: '',
     email: '',
     password: '',
     confirmPassword: '',
+    firstname: '',
+    lastname: '',
+    birthDate: maxAllowedDate,
+    sexe: '',
+    phoneNumber: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Calcule l'âge à partir d'un objet Date
+  const calculateAge = (birthDate: Date) => {
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('fr-FR');
+  };
+
+  const handleDateChange = (event: any, selectedDate: Date | undefined) => {
+    if (selectedDate) {
+      setFormData({ ...formData, birthDate: selectedDate });
+    }
+  };
+
   const handleSignUp = async () => {
     try {
-      const { username, email, password, confirmPassword } = formData;
+      const {
+        username,
+        email,
+        password,
+        confirmPassword,
+        firstname,
+        lastname,
+        birthDate,
+        sexe,
+        phoneNumber,
+      } = formData;
 
-      // Basic validation
-      if (!username || !email || !password || !confirmPassword) {
+      if (
+        !username ||
+        !email ||
+        !password ||
+        !confirmPassword ||
+        !firstname ||
+        !lastname ||
+        !birthDate ||
+        !sexe ||
+        !phoneNumber
+      ) {
         Alert.alert('Erreur', 'Veuillez remplir tous les champs');
         return;
       }
@@ -45,20 +95,67 @@ export default function SignUpScreen() {
         return;
       }
 
-      // TODO: Implement authentication
-      router.replace('/(tabs)');
+      const age = calculateAge(birthDate);
+      if (age < 12) {
+        Alert.alert(
+          'Erreur',
+          'Vous devez avoir au moins 12 ans pour vous inscrire.'
+        );
+        return;
+      }
+
+      const isoBirthDate = birthDate.toISOString();
+      const isoCreatedAt = new Date().toISOString();
+
+      const userData = {
+        username,
+        email,
+        password,
+        firstname,
+        lastname,
+        birthDate: isoBirthDate,
+        age,
+        sexe,
+        phoneNumber,
+        role: 'user',
+        createdAt: isoCreatedAt,
+      };
+
+      const response = await fetch(
+        'https://758f-2a01-cb0c-42-3900-2d84-38b-1293-b5da.ngrok-free.app/api/users',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(userData),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.error || 'Erreur lors de la création du compte'
+        );
+      }
+
+      const data = await response.json();
+      console.log('Utilisateur créé :', data);
+      // Redirige vers l'écran de connexion
+      router.replace('/login');
     } catch (error) {
       Alert.alert(
         'Erreur',
-        'La création du compte a échoué. Veuillez réessayer.'
+        (error as Error).message ||
+          'La création du compte a échoué. Veuillez réessayer.'
       );
     }
   };
 
   return (
-    <ScrollView
+    <KeyboardAwareScrollView
       style={styles.container}
       contentContainerStyle={styles.contentContainer}
+      extraScrollHeight={20}
+      enableOnAndroid={true}
     >
       <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
         <Ionicons name="chevron-back" size={28} color={Colors.primary} />
@@ -70,6 +167,7 @@ export default function SignUpScreen() {
       </View>
 
       <View style={styles.form}>
+        {/* Nom d'utilisateur */}
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Nom d'utilisateur</Text>
           <TextInput
@@ -84,6 +182,7 @@ export default function SignUpScreen() {
           />
         </View>
 
+        {/* Email */}
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Email</Text>
           <TextInput
@@ -97,6 +196,92 @@ export default function SignUpScreen() {
           />
         </View>
 
+        {/* Prénom */}
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Prénom</Text>
+          <TextInput
+            style={styles.input}
+            value={formData.firstname}
+            onChangeText={(text) =>
+              setFormData({ ...formData, firstname: text })
+            }
+            placeholder="Entrer votre prénom"
+            placeholderTextColor={Colors.gray600}
+          />
+        </View>
+
+        {/* Nom */}
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Nom</Text>
+          <TextInput
+            style={styles.input}
+            value={formData.lastname}
+            onChangeText={(text) =>
+              setFormData({ ...formData, lastname: text })
+            }
+            placeholder="Entrer votre nom"
+            placeholderTextColor={Colors.gray600}
+          />
+        </View>
+
+        {/* Date de naissance */}
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Date de naissance</Text>
+          <View style={styles.datePickerContainer}>
+            <DateTimePicker
+              value={formData.birthDate}
+              mode="date"
+              display="default"
+              onChange={handleDateChange}
+              // Empêche de choisir une date rendant l'utilisateur plus jeune que 12 ans
+              maximumDate={maxAllowedDate}
+              locale="fr-FR"
+              themeVariant="light"
+            />
+          </View>
+        </View>
+
+        {/* Sexe */}
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Sexe</Text>
+          <View style={styles.sexContainer}>
+            <TouchableOpacity
+              style={[
+                styles.sexButton,
+                formData.sexe === 'homme' && styles.sexButtonSelected,
+              ]}
+              onPress={() => setFormData({ ...formData, sexe: 'homme' })}
+            >
+              <Text style={styles.sexButtonText}>Homme</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.sexButton,
+                formData.sexe === 'femme' && styles.sexButtonSelected,
+              ]}
+              onPress={() => setFormData({ ...formData, sexe: 'femme' })}
+            >
+              <Text style={styles.sexButtonText}>Femme</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Téléphone */}
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Téléphone</Text>
+          <TextInput
+            style={styles.input}
+            value={formData.phoneNumber}
+            onChangeText={(text) =>
+              setFormData({ ...formData, phoneNumber: text })
+            }
+            placeholder="Entrer votre numéro de téléphone"
+            placeholderTextColor={Colors.gray600}
+            keyboardType="phone-pad"
+          />
+        </View>
+
+        {/* Mot de passe */}
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Mot de passe</Text>
           <View style={styles.inputWithIconContainer}>
@@ -126,6 +311,7 @@ export default function SignUpScreen() {
           </Text>
         </View>
 
+        {/* Confirmer le mot de passe */}
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Confirmer le mot de passe</Text>
           <View style={styles.inputWithIconContainer}>
@@ -163,7 +349,7 @@ export default function SignUpScreen() {
           </TouchableOpacity>
         </View>
       </View>
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 
@@ -217,6 +403,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.gray200,
   },
+  datePickerContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderColor: Colors.gray200,
+    overflow: 'hidden',
+  },
   inputWithIconContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -267,5 +462,25 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontSize: 16,
     fontWeight: '600',
+  },
+  sexContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  sexButton: {
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.gray200,
+    backgroundColor: Colors.white,
+    minWidth: 100,
+    alignItems: 'center',
+  },
+  sexButtonSelected: {
+    backgroundColor: Colors.secondary,
+    borderColor: Colors.secondary,
+  },
+  sexButtonText: {
+    color: Colors.text,
   },
 });

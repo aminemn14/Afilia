@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import Colors from '../constants/Colors';
@@ -18,10 +19,32 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     try {
-      // TODO: Implement authentication
+      const response = await fetch(
+        'https://758f-2a01-cb0c-42-3900-2d84-38b-1293-b5da.ngrok-free.app/api/users/login',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erreur lors de la connexion');
+      }
+
+      const data = await response.json();
+      console.log('Token reçu :', data.token);
+
+      // Stocker le token et l'objet utilisateur dans AsyncStorage
+      await AsyncStorage.setItem('token', data.token);
+      await AsyncStorage.setItem('user', JSON.stringify(data.user));
       router.replace('/(tabs)');
     } catch (error) {
-      Alert.alert('Error', 'Failed to login. Please try again.');
+      Alert.alert(
+        'Erreur',
+        (error as Error).message || 'Échec de la connexion. Veuillez réessayer.'
+      );
     }
   };
 
