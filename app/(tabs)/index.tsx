@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,11 +6,14 @@ import {
   FlatList,
   TouchableOpacity,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { MotiView } from 'moti';
 import Colors from '../constants/Colors';
-import type { Event } from '@/app/types';
+import { useRouter } from 'expo-router';
+import type { Event } from '../types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const MOCK_EVENTS: Event[] = [
   {
@@ -42,9 +45,32 @@ const MOCK_EVENTS: Event[] = [
 const EVENT_TYPES = ['Tous', 'Théâtre', 'Concert', 'Opéra', 'Spectacle'];
 
 export default function HomeScreen() {
+  const [user, setUser] = useState<any>(null);
+  const [firstName, setFirstName] = useState<string | null>(null);
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState('Tous');
   const [events, setEvents] = useState(MOCK_EVENTS);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const userString = await AsyncStorage.getItem('user');
+        if (userString) {
+          const userObj = JSON.parse(userString);
+          setUser(userObj);
+          setFirstName(userObj.firstname);
+        }
+      } catch (error) {
+        console.error(
+          'Erreur lors de la récupération des infos utilisateur',
+          error
+        );
+      }
+    };
+
+    fetchUserData();
+  }, []);
 
   const filteredEvents = events.filter((event) => {
     const matchesSearch = event.name
@@ -83,10 +109,27 @@ export default function HomeScreen() {
     </MotiView>
   );
 
+  if (firstName === null) {
+    // Affiche un indicateur de chargement tant que le prénom n'est pas récupéré
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Bienvenue Jean !</Text>
+        <View style={styles.headerTop}>
+          <Text style={styles.title}>Bienvenue {firstName} !</Text>
+          {/* Affiche le bouton addEvent seulement si l'utilisateur est admin */}
+          {user && user.role === 'admin' && (
+            <TouchableOpacity style={styles.newEventButton}>
+              <Ionicons name="add-outline" size={18} color={Colors.white} />
+            </TouchableOpacity>
+          )}
+        </View>
         <Text style={styles.subTitle}>Trouver un événement</Text>
         <View style={styles.searchContainer}>
           <Ionicons
@@ -145,6 +188,11 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   container: {
     flex: 1,
     backgroundColor: Colors.background,
@@ -154,16 +202,29 @@ const styles = StyleSheet.create({
     paddingTop: 80,
     backgroundColor: Colors.white,
   },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
     color: Colors.text,
-    marginBottom: 8,
+  },
+  newEventButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 22,
+    backgroundColor: Colors.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   subTitle: {
     fontSize: 20,
     color: Colors.gray800,
     marginBottom: 16,
+    marginTop: 8,
   },
   searchContainer: {
     flexDirection: 'row',
