@@ -17,6 +17,7 @@ import Colors from '../constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabaseClient';
 import * as FileSystem from 'expo-file-system';
+import apiConfig from '@/config/apiConfig';
 
 export default function ProfileSettingsScreen() {
   const [user, setUser] = useState<any>(null);
@@ -172,7 +173,7 @@ export default function ProfileSettingsScreen() {
       };
 
       const response = await fetch(
-        `https://758f-2a01-cb0c-42-3900-2d84-38b-1293-b5da.ngrok-free.app/api/users/${user._id}`,
+        `${apiConfig.baseURL}/api/users/${user._id}`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },

@@ -12,6 +12,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import Colors from '../constants/Colors';
+import apiConfig from '@/config/apiConfig';
 
 export default function SignUpScreen() {
   // Calcul de la date maximale autorisée (au moins 12 ans)
@@ -121,14 +122,11 @@ export default function SignUpScreen() {
         createdAt: isoCreatedAt,
       };
 
-      const response = await fetch(
-        'https://758f-2a01-cb0c-42-3900-2d84-38b-1293-b5da.ngrok-free.app/api/users',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(userData),
-        }
-      );
+      const response = await fetch(`${apiConfig.baseURL}/api/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData),
+      });
 
       if (!response.ok) {
         const errorData = await response.json();

@@ -11,6 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import Colors from '../constants/Colors';
+import apiConfig from '@/config/apiConfig';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -19,14 +20,11 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     try {
-      const response = await fetch(
-        'https://758f-2a01-cb0c-42-3900-2d84-38b-1293-b5da.ngrok-free.app/api/users/login',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password }),
-        }
-      );
+      const response = await fetch(`${apiConfig.baseURL}/api/users/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
 
       if (!response.ok) {
         const errorData = await response.json();
