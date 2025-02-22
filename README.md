@@ -30,12 +30,38 @@ Afilia est une application mobile développée avec React Native et Expo, conçu
 
    ```bash
    npm install
+   cd backend
+   npm install
+   cd ..
    ```
 
 3. **Démarrage de l’application**  
-   Lancez l’application en mode développement avec Expo :
+    Pour lancer l’application en mode développement, suivez ces étapes :
+
+   1. Configuration du backend :
 
    ```bash
+   cd backend
+   ```
+
+   • Créez un fichier .env à la racine du dossier backend et remplissez-le avec les variables suivantes :
+
+   MONGO_URI= # URL de connexion à votre base de données MongoDB
+   PORT= # Port sur lequel le serveur backend sera lancé (ex: 5000)
+
+   2. Lancer le serveur backend :
+
+   ```bash
+   npm run dev
+   ```
+
+   3. Lancer l'application mobile :
+
+   • Ouvrez un nouveau terminal sans fermer celui du backend.
+   • Revenez au dossier racine du projet et lancez Expo :
+
+   ```bash
+   cd ..
    npx expo start
    ```
 
