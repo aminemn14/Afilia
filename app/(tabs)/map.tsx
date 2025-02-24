@@ -9,12 +9,15 @@ import {
 import MapView, { Marker, Callout } from 'react-native-maps';
 import { MotiView } from 'moti';
 
-// Icons from different libraries
 import { Ionicons } from '@expo/vector-icons';
-import { BuildingLibraryIcon } from 'react-native-heroicons/outline';
-import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
-import Entypo from 'react-native-vector-icons/Entypo';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import {
+  BuildingLibraryIcon,
+  CameraIcon,
+  MapPinIcon,
+  MusicalNoteIcon,
+  MicrophoneIcon,
+  TicketIcon,
+} from 'react-native-heroicons/outline';
 
 import Colors from '../constants/Colors';
 import type { Location, Event } from '@/app/types';
@@ -22,17 +25,20 @@ import type { Location, Event } from '@/app/types';
 function getIconForEventType(type: string, size: number, color: string) {
   switch (type.toLowerCase()) {
     case 'chorale':
-      return <Ionicons name="musical-notes" size={size} color={color} />;
+      return <MusicalNoteIcon size={size} color={color} strokeWidth={1.8} />;
     case 'museum':
-      return <BuildingLibraryIcon size={size} color={color} />;
+      return (
+        <BuildingLibraryIcon size={size} color={color} strokeWidth={1.8} />
+      );
+
     case 'theatre':
-      return <FontAwesome5 name="theater-masks" size={size} color={color} />;
+      return <TicketIcon size={size} color={color} strokeWidth={1.8} />;
     case 'concert':
-      return <Entypo name="modern-mic" size={size} color={color} />;
+      return <MicrophoneIcon size={size} color={color} strokeWidth={1.8} />;
     case 'exposition':
-      return <MaterialIcons name="local-see" size={size} color={color} />;
+      return <CameraIcon size={size} color={color} strokeWidth={1.8} />;
     default:
-      return <Ionicons name="location-outline" size={size} color={color} />;
+      return <MapPinIcon size={size} color={color} strokeWidth={1.8} />;
   }
 }
 
