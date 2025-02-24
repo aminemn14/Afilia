@@ -110,7 +110,7 @@ export default function HomeScreen() {
   );
 
   if (firstName === null) {
-    // Affiche un indicateur de chargement tant que le prénom n'est pas récupéré
+    // Affiche un indicateur de chargement tant que le prénom n'est pas récupéré pour éviter une incohérence UI-UX
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={Colors.primary} />
