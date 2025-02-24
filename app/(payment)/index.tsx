@@ -69,9 +69,26 @@ export default function PaymentScreen(): JSX.Element {
 
   // Affichage du numéro de carte sur la carte
   const renderCardNumber = () => {
-    const digitsCount = cardNumberMask.replace(/\s/g, '').length;
-    const numberPadded = cardNumber.padEnd(digitsCount, '•');
-    return numberPadded.replace(/(.{4})(.{4})(.{4})(.{4})/, '$1 $2 $3 $4');
+    // On s'assure d'avoir une longueur de 16 caractères
+    const paddedNumber = cardNumber.padEnd(16, '•');
+
+    // On masque les 8 chiffres du milieu
+    let masked = '';
+    for (let i = 0; i < 16; i++) {
+      if (i < 4) {
+        masked += paddedNumber[i];
+      } else if (i >= 4 && i < 12) {
+        masked += paddedNumber[i] === '•' ? '•' : '*';
+      } else {
+        masked += paddedNumber[i];
+      }
+      // On insère un espace toutes les 4 positions
+      if ((i + 1) % 4 === 0 && i < 15) {
+        masked += ' ';
+      }
+    }
+
+    return masked;
   };
 
   // Formatage du numéro de carte dans l'input (espaces tous les 4 chiffres)
