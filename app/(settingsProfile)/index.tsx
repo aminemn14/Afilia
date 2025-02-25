@@ -28,6 +28,8 @@ export default function ProfileSettingsScreen() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [bio, setBio] = useState('');
   const [avatar, setAvatar] = useState<string | null>(null);
+  // Nouvelle variable pour stocker l'URI locale sélectionnée (sans upload immédiat)
+  const [localAvatarUri, setLocalAvatarUri] = useState<string>('');
   const router = useRouter();
 
   useEffect(() => {
@@ -62,7 +64,7 @@ export default function ProfileSettingsScreen() {
       return;
     }
 
-    let result = await ImagePicker.launchImageLibraryAsync({
+    const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.7,
       allowsEditing: true,
@@ -91,77 +93,63 @@ export default function ProfileSettingsScreen() {
         return;
       }
 
-      try {
-        // Si l'utilisateur a déjà un avatar, on va essayer de supprimer l'ancien fichier
-        if (avatar && user) {
-          // On déduit le nom de base (sans extension) en se basant sur l'ID utilisateur
-          const baseFileName = `avatars/avatar_${user._id}`;
-          // On prépare les deux versions possibles
-          const filesToRemove = [`${baseFileName}.jpg`, `${baseFileName}.png`];
-          const { error: removeError } = await supabase.storage
-            .from('Afilia-UserPicture')
-            .remove(filesToRemove);
-          if (removeError) {
-            console.warn(
-              "Erreur lors de la suppression de l'ancien avatar",
-              removeError.message
-            );
-          } else {
-            console.log('Ancien avatar supprimé :', filesToRemove);
-          }
-        }
+      // Stocker l'URI localement sans uploader immédiatement
+      setLocalAvatarUri(image.uri);
+      // Afficher l'image sélectionnée dans l'interface
+      setAvatar(image.uri);
+    }
+  };
 
-        // Convertir l'URI en arrayBuffer
-        const arrayBuffer = await fetch(image.uri).then((res) =>
-          res.arrayBuffer()
-        );
+  const uploadLocalAvatar = async (): Promise<string> => {
+    if (!localAvatarUri) return '';
+    try {
+      const arrayBuffer = await fetch(localAvatarUri).then((res) =>
+        res.arrayBuffer()
+      );
+      const fileExt = localAvatarUri.split('.').pop()?.toLowerCase() || 'jpg';
+      // Nom du fichier : si l'utilisateur est défini, utiliser son ID, sinon générer un nom basé sur Date.now()
+      const fileName = user
+        ? `avatars/avatar_${user._id}.${fileExt}`
+        : `avatars/avatar_${Date.now()}.${fileExt}`;
+      console.log('Nom de fichier généré :', fileName);
 
-        // Déterminer l'extension du nouveau fichier et le contentType
-        const fileExt = image.uri.split('.').pop()?.toLowerCase() || 'jpg';
-        const contentType =
-          image.mimeType || (fileExt === 'png' ? 'image/png' : 'image/jpeg');
+      const { data, error } = await supabase.storage
+        .from('Afilia-UserPicture')
+        .upload(fileName, arrayBuffer, {
+          contentType: localAvatarUri.includes('.png')
+            ? 'image/png'
+            : 'image/jpeg',
+        });
+      console.log('Upload response :', { data, error });
 
-        // Définir le nom de fichier en utilisant l'ID utilisateur comme base
-        const fileName = user
-          ? `avatars/avatar_${user._id}.${fileExt}`
-          : `avatars/avatar_${Date.now()}.${fileExt}`;
-        console.log('Nom de fichier généré :', fileName);
-
-        // Uploader le fichier dans le bucket "Afilia-UserPicture"
-        const { data, error } = await supabase.storage
-          .from('Afilia-UserPicture')
-          .upload(fileName, arrayBuffer, { contentType });
-        console.log('Upload response :', { data, error });
-
-        if (error) {
-          console.error('Erreur lors de l’upload sur Supabase', error.message);
-          Alert.alert('Erreur', "L'upload de l'avatar a échoué");
-          return;
-        }
-
-        // Récupérer l'URL publique du nouveau fichier
-        const { data: publicData } = supabase.storage
-          .from('Afilia-UserPicture')
-          .getPublicUrl(fileName);
-        console.log('Public URL Response :', publicData);
-
-        const publicUrl = publicData.publicUrl;
-        if (!publicUrl) {
-          Alert.alert('Erreur', "L'URL de l'avatar n'a pas pu être récupérée");
-          return;
-        }
-        console.log('URL publique :', publicUrl);
-
-        setAvatar(publicUrl);
-      } catch (err) {
-        console.error("Erreur lors du traitement de l'image", err);
-        Alert.alert('Erreur', "Impossible de traiter l'image");
+      if (error) {
+        console.error('Erreur lors de l’upload sur Supabase', error.message);
+        throw error;
       }
+
+      const { data: publicData } = supabase.storage
+        .from('Afilia-UserPicture')
+        .getPublicUrl(fileName);
+      const publicUrl = publicData.publicUrl;
+      if (!publicUrl) {
+        throw new Error("L'URL de l'avatar n'a pas pu être récupérée");
+      }
+      console.log('URL publique :', publicUrl);
+      return publicUrl;
+    } catch (err) {
+      Alert.alert('Erreur', "Impossible d'uploader l'avatar");
+      throw err;
     }
   };
 
   const handleSave = async () => {
     try {
+      let updatedAvatar = avatar;
+
+      if (localAvatarUri) {
+        updatedAvatar = await uploadLocalAvatar();
+      }
+
       const updatedData = {
         username,
         email,
@@ -169,7 +157,7 @@ export default function ProfileSettingsScreen() {
         lastname,
         phoneNumber,
         bio,
-        avatar,
+        avatar: updatedAvatar,
       };
 
       const response = await fetch(
@@ -303,7 +291,6 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 40,
   },
-
   avatarWrapper: {
     alignItems: 'center',
     marginBottom: 20,
@@ -346,16 +333,6 @@ const styles = StyleSheet.create({
   bioInput: {
     height: 80,
     textAlignVertical: 'top',
-  },
-  toggleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  toggleLabel: {
-    fontSize: 16,
-    color: Colors.text,
   },
   saveButton: {
     backgroundColor: Colors.primary,

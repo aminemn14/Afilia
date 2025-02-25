@@ -8,7 +8,6 @@ import {
 } from 'react-native';
 import MapView, { Marker, Callout } from 'react-native-maps';
 import { MotiView } from 'moti';
-
 import { Ionicons } from '@expo/vector-icons';
 import {
   BuildingLibraryIcon,
@@ -18,19 +17,30 @@ import {
   MicrophoneIcon,
   TicketIcon,
 } from 'react-native-heroicons/outline';
+import { router } from 'expo-router';
 
 import Colors from '../constants/Colors';
 import type { Location, Event } from '@/app/types';
 
-function getIconForEventType(type: string, size: number, color: string) {
-  switch (type.toLowerCase()) {
+function getIconForEventType(
+  eventTypes: string[],
+  size: number,
+  color: string
+): JSX.Element {
+  // Si le tableau est vide ou si le lieu a plusieurs types, on affiche l'icône par défaut (MapPinIcon)
+  if (!eventTypes || eventTypes.length !== 1) {
+    return <MapPinIcon size={size} color={color} strokeWidth={1.8} />;
+  }
+
+  // S'il n'y a qu'un seul type, on choisit l'icône en fonction de ce type
+  const type = eventTypes[0].toLowerCase();
+  switch (type) {
     case 'chorale':
       return <MusicalNoteIcon size={size} color={color} strokeWidth={1.8} />;
     case 'museum':
       return (
         <BuildingLibraryIcon size={size} color={color} strokeWidth={1.8} />
       );
-
     case 'theatre':
       return <TicketIcon size={size} color={color} strokeWidth={1.8} />;
     case 'concert':
@@ -48,50 +58,76 @@ const MOCK_LOCATIONS: Location[] = [
     name: 'Salle des Concerts',
     latitude: 50.64669971162,
     longitude: 3.051274251686708,
+    created_at: new Date().toISOString(),
     address: "98 Façade de l'Esplanade",
     city: 'Lille',
     zipcode: '59000',
-    event_type: 'concert',
+    event_types: ['concert'],
+    image_url: '',
+    description: 'Une salle dédiée aux concerts rock et pop.',
+    tel: '01 23 45 67 89',
+    email: 'contact@salledesconcerts.fr',
   },
   {
     id: '2',
     name: 'Théâtre de la Ville',
     latitude: 50.63794445148652,
     longitude: 3.0969858745452283,
+    created_at: new Date().toISOString(),
     address: '64 Rue Louis Braille',
     city: 'Lille',
     zipcode: '59000',
-    event_type: 'theatre',
+    event_types: ['théâtre'],
+    image_url: '',
+    description: 'Un théâtre historique proposant des pièces classiques.',
+    tel: '01 98 76 54 32',
+    email: 'contact@theatre-ville.fr',
   },
   {
     id: '3',
     name: "Musée d'Art",
     latitude: 50.64,
     longitude: 3.05,
+    created_at: new Date().toISOString(),
     address: '12 Rue du Louvre',
     city: 'Lille',
     zipcode: '59000',
-    event_type: 'museum',
+    event_types: ['museum'],
+    image_url: '',
+    description: 'Musée consacré aux arts modernes et contemporains.',
+    tel: '09 87 65 43 21',
+    email: 'info@museedart.fr',
   },
   {
     id: '4',
     name: 'Centre Chorale',
     latitude: 50.635,
     longitude: 3.055,
+    created_at: new Date().toISOString(),
     address: '5 Avenue de la Musique',
     city: 'Lille',
     zipcode: '59000',
-    event_type: 'chorale',
+    event_types: ['chorale'],
+    image_url: '',
+    description: 'Lieu de répétition et d’auditions pour chorales.',
+    tel: '01 11 22 33 44',
+    email: 'chorale@centre.fr',
   },
   {
     id: '5',
     name: "Galerie d'Exposition",
     latitude: 50.642,
     longitude: 3.045,
+    created_at: new Date().toISOString(),
     address: '20 Rue des Arts',
     city: 'Lille',
     zipcode: '59000',
-    event_type: 'exposition',
+    event_types: ['exposition'],
+    image_url: '',
+    description:
+      'Galerie privée exposant des artistes locaux et internationaux.',
+    tel: '06 12 34 56 78',
+    email: 'galerie@exposition.fr',
   },
 ];
 
@@ -104,10 +140,22 @@ const MOCK_EVENTS: Event[] = [
     max_participants: 100,
     remaining_participants: 50,
     location_id: '1',
-    creator_id: '1',
     created_at: new Date().toISOString(),
     status: 'open',
+    price: 20,
+    is_free: false,
+    organizer: 'John Doe Productions',
+    tel: '01 23 45 67 89',
+    email: 'contact@johndoeprod.fr',
+    description: 'Un grand concert de rock avec plusieurs groupes locaux.',
+    start_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Ex: dans 7 jours
+    end_date: new Date(
+      Date.now() + 7 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000
+    ).toISOString(),
+    start_time: '19:00',
+    end_time: '23:00',
   },
+
   {
     id: '2',
     name: 'Théâtre Classique',
@@ -116,9 +164,20 @@ const MOCK_EVENTS: Event[] = [
     max_participants: 50,
     remaining_participants: 20,
     location_id: '2',
-    creator_id: '2',
     created_at: new Date().toISOString(),
     status: 'open',
+    price: 15,
+    is_free: false,
+    organizer: 'Compagnie Molière',
+    tel: '01 98 76 54 32',
+    email: 'theatre@classique.fr',
+    description: 'Représentation théâtrale inspirée d’œuvres classiques.',
+    start_date: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
+    end_date: new Date(
+      Date.now() + 10 * 24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000
+    ).toISOString(),
+    start_time: '20:00',
+    end_time: '23:00',
   },
   {
     id: '3',
@@ -128,9 +187,18 @@ const MOCK_EVENTS: Event[] = [
     max_participants: 120,
     remaining_participants: 40,
     location_id: '5',
-    creator_id: '3',
     created_at: new Date().toISOString(),
     status: 'open',
+    price: 0,
+    is_free: true,
+    organizer: 'Galerie Contemporaine',
+    tel: '09 87 65 43 21',
+    email: 'info@artmoderne.com',
+    description: "Découvrez les œuvres d'artistes émergents et reconnus.",
+    start_date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+    end_date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
+    start_time: '10:00',
+    end_time: '18:00',
   },
   {
     id: '4',
@@ -140,9 +208,20 @@ const MOCK_EVENTS: Event[] = [
     max_participants: 40,
     remaining_participants: 20,
     location_id: '3',
-    creator_id: '4',
     created_at: new Date().toISOString(),
     status: 'open',
+    price: 10,
+    is_free: false,
+    organizer: 'Musée National',
+    tel: '01 11 22 33 44',
+    email: 'contact@museenational.fr',
+    description: 'Visite guidée des collections permanentes et temporaires.',
+    start_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+    end_date: new Date(
+      Date.now() + 3 * 24 * 60 * 60 * 1000 + 4 * 60 * 60 * 1000
+    ).toISOString(),
+    start_time: '14:00',
+    end_time: '18:00',
   },
   {
     id: '5',
@@ -152,9 +231,20 @@ const MOCK_EVENTS: Event[] = [
     max_participants: 30,
     remaining_participants: 15,
     location_id: '4',
-    creator_id: '5',
     created_at: new Date().toISOString(),
     status: 'open',
+    price: 5,
+    is_free: false,
+    organizer: 'Association Chorale Libre',
+    tel: '06 12 34 56 78',
+    email: 'chorale@association.fr',
+    description: "Une chorale accessible à tous pour célébrer l'été.",
+    start_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+    end_date: new Date(
+      Date.now() + 14 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000
+    ).toISOString(),
+    start_time: '19:00',
+    end_time: '21:00',
   },
 ];
 
@@ -162,6 +252,7 @@ export default function MapScreen() {
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(
     null
   );
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
 
   const getEventsAtLocation = (locationId: string) => {
     return MOCK_EVENTS.filter((event) => event.location_id === locationId);
@@ -188,7 +279,7 @@ export default function MapScreen() {
             onPress={() => setSelectedLocation(location)}
           >
             <View style={styles.markerContainer}>
-              {getIconForEventType(location.event_type, 24, Colors.primary)}
+              {getIconForEventType(location.event_types, 24, Colors.primary)}
             </View>
             <Callout>
               <View style={styles.callout}>
@@ -247,7 +338,10 @@ export default function MapScreen() {
                         </Text>
                       </View>
                     </View>
-                    <TouchableOpacity style={styles.joinButton}>
+                    <TouchableOpacity
+                      style={styles.joinButton}
+                      onPress={() => router.push(`/(events)/event/${event.id}`)}
+                    >
                       <Text style={styles.joinButtonText}>Participer</Text>
                     </TouchableOpacity>
                   </View>

@@ -1,3 +1,5 @@
+type EventType = 'théâtre' | 'concert' | 'chorale' | 'exposition' | 'museum';
+
 export interface User {
   id: string;
   firstname: string;
@@ -26,9 +28,18 @@ export interface Event {
   max_participants: number;
   remaining_participants: number;
   location_id: string;
-  creator_id: string;
   created_at: string;
-  status: 'open' | 'full' | 'in_progress' | 'completed';
+  status: 'open' | 'full' | 'in_progress' | 'completed' | 'cancelled';
+  price: number;
+  is_free: boolean;
+  organizer: string;
+  tel: string;
+  email: string;
+  description: string;
+  start_date: string;
+  end_date: string;
+  start_time: string;
+  end_time: string;
 }
 
 export interface Location {
@@ -36,10 +47,15 @@ export interface Location {
   name: string;
   latitude: number;
   longitude: number;
+  created_at: string;
   address: string;
   city: string;
   zipcode: string;
-  event_type: 'theatre' | 'concert' | 'chorale' | 'exposition' | 'museum';
+  event_types: EventType[];
+  image_url: string;
+  description: string;
+  tel: string;
+  email: string;
 }
 
 export interface Message {
