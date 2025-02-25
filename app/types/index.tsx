@@ -21,6 +21,7 @@ export interface Profile extends User {
 }
 
 export interface Event {
+  _id: string;
   id: string;
   name: string;
   event_type: string;
@@ -43,6 +44,7 @@ export interface Event {
 }
 
 export interface Location {
+  _id: string;
   id: string;
   name: string;
   latitude: number;
