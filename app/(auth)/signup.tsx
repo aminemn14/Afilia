@@ -231,7 +231,6 @@ export default function SignUpScreen() {
               mode="date"
               display="default"
               onChange={handleDateChange}
-              // Empêche de choisir une date rendant l'utilisateur plus jeune que 12 ans
               maximumDate={maxAllowedDate}
               locale="fr-FR"
               themeVariant="light"
