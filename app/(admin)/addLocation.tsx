@@ -179,7 +179,7 @@ export default function CreateLocationScreen() {
       const response = await axios.post(apiUrl, locationData);
       console.log('Réponse de l’API:', response.data);
       Alert.alert('Succès', 'Le lieu a été créé avec succès');
-      router.back();
+      router.push('/(tabs)');
     } catch (error: any) {
       console.error('Erreur lors de la création du lieu :', error);
       if (error.response) {
@@ -202,7 +202,10 @@ export default function CreateLocationScreen() {
       extraScrollHeight={20}
       enableOnAndroid={true}
     >
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => router.push('/(tabs)')}
+      >
         <Ionicons name="chevron-back" size={28} color={Colors.primary} />
       </TouchableOpacity>
 

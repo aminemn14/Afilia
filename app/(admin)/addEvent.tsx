@@ -118,7 +118,7 @@ export default function CreateEventScreen() {
       const response = await axios.post(apiUrl, eventData);
       console.log("Réponse de l'API:", response.data);
       Alert.alert('Succès', "L'événement a été créé avec succès");
-      router.back();
+      router.push('/(tabs)');
     } catch (error: any) {
       console.error("Erreur lors de la création de l'événement :", error);
       if (error.response) {
@@ -145,7 +145,10 @@ export default function CreateEventScreen() {
       extraScrollHeight={20}
       enableOnAndroid={true}
     >
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => router.push('/(tabs)')}
+      >
         <Ionicons name="chevron-back" size={28} color={Colors.primary} />
       </TouchableOpacity>
 
