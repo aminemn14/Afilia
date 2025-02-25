@@ -16,11 +16,7 @@ const EventSchema = new mongoose.Schema({
     ref: 'Location',
     required: true,
   },
-  creator_id: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
-  },
+
   created_at: { type: Date, default: Date.now },
   status: {
     type: String,
