@@ -24,9 +24,19 @@ const EventSchema = new mongoose.Schema({
   created_at: { type: Date, default: Date.now },
   status: {
     type: String,
-    enum: ['open', 'full', 'in_progress', 'completed'],
+    enum: ['open', 'full', 'in_progress', 'completed', 'cancelled'],
     default: 'open',
   },
+  price: { type: Number, required: true },
+  is_free: { type: Boolean, required: true },
+  organizer: { type: String, required: true },
+  tel: { type: String, required: true },
+  email: { type: String, required: true },
+  description: { type: String, required: true },
+  start_date: { type: String, required: true },
+  end_date: { type: String, required: true },
+  start_time: { type: String, required: true },
+  end_time: { type: String, required: true },
 });
 
 module.exports = mongoose.model('Event', EventSchema);
