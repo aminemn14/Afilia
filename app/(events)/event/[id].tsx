@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   SafeAreaView,
   View,
@@ -6,224 +6,78 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  ActivityIndicator,
+  Alert,
+  ImageBackground,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+
 import Colors from '@/app/constants/Colors';
+import apiConfig from '@/config/apiConfig';
 import { useSearchParams } from 'expo-router/build/hooks';
-import { Event, Location } from '@/app/types';
+import { Event, Location } from '../../types';
 
-const MOCK_LOCATIONS: Location[] = [
-  {
-    id: '1',
-    name: 'Salle des Concerts',
-    latitude: 50.64669971162,
-    longitude: 3.051274251686708,
-    created_at: new Date().toISOString(),
-    address: "98 Façade de l'Esplanade",
-    city: 'Lille',
-    zipcode: '59000',
-    event_types: ['concert'],
-    image_url: '',
-    description: 'Une salle dédiée aux concerts rock et pop.',
-    tel: '01 23 45 67 89',
-    email: 'contact@salledesconcerts.fr',
-  },
-  {
-    id: '2',
-    name: 'Théâtre de la Ville',
-    latitude: 50.63794445148652,
-    longitude: 3.0969858745452283,
-    created_at: new Date().toISOString(),
-    address: '64 Rue Louis Braille',
-    city: 'Lille',
-    zipcode: '59000',
-    event_types: ['théâtre'],
-    image_url: '',
-    description: 'Un théâtre historique proposant des pièces classiques.',
-    tel: '01 98 76 54 32',
-    email: 'contact@theatre-ville.fr',
-  },
-  {
-    id: '3',
-    name: "Musée d'Art",
-    latitude: 50.64,
-    longitude: 3.05,
-    created_at: new Date().toISOString(),
-    address: '12 Rue du Louvre',
-    city: 'Lille',
-    zipcode: '59000',
-    event_types: ['museum'],
-    image_url: '',
-    description: 'Musée consacré aux arts modernes et contemporains.',
-    tel: '09 87 65 43 21',
-    email: 'info@museedart.fr',
-  },
-  {
-    id: '4',
-    name: 'Centre Chorale',
-    latitude: 50.635,
-    longitude: 3.055,
-    created_at: new Date().toISOString(),
-    address: '5 Avenue de la Musique',
-    city: 'Lille',
-    zipcode: '59000',
-    event_types: ['chorale'],
-    image_url: '',
-    description: 'Lieu de répétition et d’auditions pour chorales.',
-    tel: '01 11 22 33 44',
-    email: 'chorale@centre.fr',
-  },
-  {
-    id: '5',
-    name: "Galerie d'Exposition",
-    latitude: 50.642,
-    longitude: 3.045,
-    created_at: new Date().toISOString(),
-    address: '20 Rue des Arts',
-    city: 'Lille',
-    zipcode: '59000',
-    event_types: ['exposition'],
-    image_url: '',
-    description:
-      'Galerie privée exposant des artistes locaux et internationaux.',
-    tel: '06 12 34 56 78',
-    email: 'galerie@exposition.fr',
-  },
-];
-
-const MOCK_EVENTS: Event[] = [
-  {
-    id: '1',
-    name: 'Concert Rock',
-    event_type: 'concert',
-    current_participants: 50,
-    max_participants: 100,
-    remaining_participants: 50,
-    location_id: '1',
-    created_at: new Date().toISOString(),
-    status: 'open',
-    price: 20,
-    is_free: false,
-    organizer: 'John Doe Productions',
-    tel: '01 23 45 67 89',
-    email: 'contact@johndoeprod.fr',
-    description: 'Un grand concert de rock avec plusieurs groupes locaux.',
-    start_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    end_date: new Date(
-      Date.now() + 7 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000
-    ).toISOString(),
-    start_time: '19:00',
-    end_time: '23:00',
-  },
-
-  {
-    id: '2',
-    name: 'Théâtre Classique',
-    event_type: 'theatre',
-    current_participants: 30,
-    max_participants: 50,
-    remaining_participants: 20,
-    location_id: '2',
-    created_at: new Date().toISOString(),
-    status: 'open',
-    price: 15,
-    is_free: false,
-    organizer: 'Compagnie Molière',
-    tel: '01 98 76 54 32',
-    email: 'theatre@classique.fr',
-    description: 'Représentation théâtrale inspirée d’œuvres classiques.',
-    start_date: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
-    end_date: new Date(
-      Date.now() + 10 * 24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000
-    ).toISOString(),
-    start_time: '20:00',
-    end_time: '23:00',
-  },
-  {
-    id: '3',
-    name: "Exposition d'Art Moderne",
-    event_type: 'exposition',
-    current_participants: 80,
-    max_participants: 120,
-    remaining_participants: 40,
-    location_id: '5',
-    created_at: new Date().toISOString(),
-    status: 'open',
-    price: 0,
-    is_free: true,
-    organizer: 'Galerie Contemporaine',
-    tel: '09 87 65 43 21',
-    email: 'info@artmoderne.com',
-    description: "Découvrez les œuvres d'artistes émergents et reconnus.",
-    start_date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-    end_date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
-    start_time: '10:00',
-    end_time: '18:00',
-  },
-  {
-    id: '4',
-    name: 'Visite au Musée',
-    event_type: 'museum',
-    current_participants: 20,
-    max_participants: 40,
-    remaining_participants: 20,
-    location_id: '3',
-    created_at: new Date().toISOString(),
-    status: 'open',
-    price: 10,
-    is_free: false,
-    organizer: 'Musée National',
-    tel: '01 11 22 33 44',
-    email: 'contact@museenational.fr',
-    description: 'Visite guidée des collections permanentes et temporaires.',
-    start_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-    end_date: new Date(
-      Date.now() + 3 * 24 * 60 * 60 * 1000 + 4 * 60 * 60 * 1000
-    ).toISOString(),
-    start_time: '14:00',
-    end_time: '18:00',
-  },
-  {
-    id: '5',
-    name: "Chorale d'été",
-    event_type: 'chorale',
-    current_participants: 15,
-    max_participants: 30,
-    remaining_participants: 15,
-    location_id: '4',
-    created_at: new Date().toISOString(),
-    status: 'open',
-    price: 5,
-    is_free: false,
-    organizer: 'Association Chorale Libre',
-    tel: '06 12 34 56 78',
-    email: 'chorale@association.fr',
-    description: "Une chorale accessible à tous pour célébrer l'été.",
-    start_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-    end_date: new Date(
-      Date.now() + 14 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000
-    ).toISOString(),
-    start_time: '19:00',
-    end_time: '21:00',
-  },
-];
-
-const getLocationById = (locationId: string) =>
-  MOCK_LOCATIONS.find((loc) => loc.id === locationId);
-
-const getEventById = (eventId: string) =>
-  MOCK_EVENTS.find((event) => event.id === eventId);
-
-const EventDetailScreen = () => {
+export default function EventDetailScreen() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get('id');
-  const router = useRouter();
-  const event = getEventById(id as string);
+
+  const [event, setEvent] = useState<Event | null>(null);
+  const [location, setLocation] = useState<Location | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    if (!id) return;
+
+    const fetchEvent = async () => {
+      try {
+        const response = await fetch(`${apiConfig.baseURL}/api/events/${id}`);
+        if (!response.ok) {
+          throw new Error('Erreur lors de la récupération de l’événement');
+        }
+        const eventData: Event = await response.json();
+        setEvent(eventData);
+
+        const locationId = eventData.location_id;
+        if (locationId) {
+          const locRes = await fetch(
+            `${apiConfig.baseURL}/api/locations/${locationId}`
+          );
+          if (!locRes.ok) {
+            throw new Error('Erreur lors de la récupération du lieu');
+          }
+          const locationData: Location = await locRes.json();
+          setLocation(locationData);
+        }
+      } catch (error) {
+        console.error(error);
+        Alert.alert(
+          'Erreur',
+          'Impossible de récupérer les données de cet événement.'
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvent();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.mainContainer}>
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!event) {
     return (
-      <SafeAreaView style={styles.safeContainer}>
+      <SafeAreaView style={styles.mainContainer}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Événement non trouvé</Text>
           <TouchableOpacity
@@ -237,142 +91,335 @@ const EventDetailScreen = () => {
     );
   }
 
-  const location = getLocationById(event.location_id);
+  // Fonctions de formatage
+  const formatDate = (isoString: string) => {
+    const date = new Date(isoString);
+    return date.toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+  };
+
+  const formatTimeDisplay = (timeString: string) => {
+    return timeString;
+  };
+
+  const formatPhoneNumber = (phone: string) => {
+    return phone.replace(/(\d{2})(?=\d)/g, '$1 ').trim();
+  };
+
+  const isSameDay = (dateString1: string, dateString2: string) => {
+    const d1 = new Date(dateString1);
+    const d2 = new Date(dateString2);
+    return (
+      d1.getFullYear() === d2.getFullYear() &&
+      d1.getMonth() === d2.getMonth() &&
+      d1.getDate() === d2.getDate()
+    );
+  };
+
+  const displayPrice = event.is_free ? 'Gratuit' : `${event.price}€`;
+  const eventType =
+    event.event_type.charAt(0).toUpperCase() + event.event_type.slice(1);
+
+  const dateTimeString = isSameDay(event.start_date, event.end_date)
+    ? `Le ${formatDate(event.start_date)} de ${formatTimeDisplay(
+        event.start_time
+      )} à ${formatTimeDisplay(event.end_time)}`
+    : `Du ${formatDate(event.start_date)} à ${formatTimeDisplay(
+        event.start_time
+      )}\nAu ${formatDate(event.end_date)} à ${formatTimeDisplay(
+        event.end_time
+      )}`;
+
+  const bannerImageUri = location ? location.image_url : '';
 
   return (
-    <SafeAreaView style={styles.safeContainer}>
+    <View style={styles.mainContainer}>
       <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.backIcon}
+        <View style={styles.bannerContainer}>
+          <ImageBackground
+            source={{ uri: bannerImageUri }}
+            style={styles.bannerImage}
+            resizeMode="cover"
           >
-            <Ionicons name="arrow-back" size={24} color={Colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.title} numberOfLines={1}>
-            {event.name}
-          </Text>
+            <LinearGradient
+              colors={['rgba(0,0,0,0.4)', 'rgba(0,0,0,0.7)']}
+              style={styles.bannerOverlay}
+            >
+              <TouchableOpacity
+                style={styles.backIcon}
+                onPress={() => router.back()}
+              >
+                <Ionicons name="chevron-back" size={16} color={Colors.text} />
+              </TouchableOpacity>
+              <Text style={styles.bannerTitle}>{event.name}</Text>
+              <Text style={styles.bannerPrice}>{displayPrice}</Text>
+            </LinearGradient>
+          </ImageBackground>
         </View>
-        {/* Contenu */}
+
+        {/* Contenu principal */}
         <ScrollView
-          contentContainerStyle={styles.scrollContainer}
+          contentContainerStyle={styles.scrollContentContainer}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.tagsContainer}>
-            <View style={[styles.tag, { backgroundColor: Colors.secondary }]}>
-              <Text style={styles.tagText}>
-                {event.event_type.charAt(0).toUpperCase() +
-                  event.event_type.slice(1)}
+          <View style={styles.chipContainer}>
+            <View style={[styles.chipBase, styles.typeChip]}>
+              <MaterialCommunityIcons
+                name="star-four-points-outline"
+                size={16}
+                color={Colors.text}
+                style={{ marginRight: 4 }}
+              />
+              <Text style={styles.typeChipText}>{eventType}</Text>
+            </View>
+            <View style={[styles.chipBase, styles.participantsChip]}>
+              <Ionicons
+                name="people"
+                size={16}
+                color={Colors.white}
+                style={{ marginRight: 4 }}
+              />
+              <Text style={styles.chipText}>
+                {event.remaining_participants} places restantes
               </Text>
             </View>
-            <View style={[styles.tag, { backgroundColor: Colors.gray200 }]}>
-              <Text style={styles.tagText}>
-                Encore {event.remaining_participants} places
+          </View>
+
+          <View style={styles.detailCard}>
+            <Text style={styles.cardTitle}>Dates et Horaires</Text>
+            <Text style={styles.cardText}>{dateTimeString}</Text>
+          </View>
+
+          <View style={styles.detailCard}>
+            <Text style={styles.cardTitle}>Infos Organisateur</Text>
+            <View style={styles.infoLine}>
+              <Ionicons
+                name="person"
+                size={18}
+                color={Colors.primary}
+                style={styles.infoIcon}
+              />
+              <Text style={styles.infoText}>{event.organizer || '—'}</Text>
+            </View>
+            <View style={styles.infoLine}>
+              <Ionicons
+                name="call"
+                size={18}
+                color={Colors.primary}
+                style={styles.infoIcon}
+              />
+              <Text style={styles.infoText}>
+                {event.tel ? formatPhoneNumber(event.tel) : '—'}
               </Text>
             </View>
-            <View style={[styles.tag, { backgroundColor: Colors.accent }]}>
-              <Text style={styles.tagText}>25€</Text>
+            <View style={styles.infoLine}>
+              <Ionicons
+                name="mail"
+                size={18}
+                color={Colors.primary}
+                style={styles.infoIcon}
+              />
+              <Text style={styles.infoText}>{event.email || '—'}</Text>
             </View>
           </View>
-          <View style={styles.detailSection}>
-            <Text style={styles.sectionTitle}>Description</Text>
-            <Text style={styles.sectionContent}>{event.description}</Text>
+
+          <View style={styles.detailCard}>
+            <Text style={styles.cardTitle}>Description</Text>
+            <Text style={styles.cardText}>{event.description}</Text>
           </View>
-          <View style={styles.detailSection}>
-            <Text style={styles.sectionTitle}>Adresse</Text>
-            <Text style={styles.sectionContent}>
-              {location
-                ? `${location.address}, ${location.city}, ${location.zipcode}`
-                : 'Adresse non disponible'}
-            </Text>
+
+          <View style={styles.detailCard}>
+            <Text style={styles.cardTitle}>Lieu</Text>
+            {location ? (
+              <>
+                <Text style={styles.cardText}>
+                  <Text style={{ fontWeight: '700' }}>
+                    {location.name}
+                    {'\n'}
+                  </Text>
+                  {location.address}, {location.city} {location.zipcode}
+                </Text>
+                {location.description ? (
+                  <View style={{ marginTop: 8 }}>
+                    <Text style={styles.cardSubtitle}>À propos du lieu</Text>
+                    <Text style={styles.cardText}>{location.description}</Text>
+                  </View>
+                ) : null}
+              </>
+            ) : (
+              <Text style={styles.cardText}>Adresse non disponible</Text>
+            )}
           </View>
         </ScrollView>
-        <TouchableOpacity style={styles.addButton} onPress={() => {}}>
-          <Text style={styles.addButtonText}>Ajouter au Panier</Text>
+
+        <TouchableOpacity
+          style={styles.fixedButton}
+          onPress={() => {
+            // TODO: Ajouter l'événement au panier
+          }}
+        >
+          <Text style={styles.fixedButtonText}>Ajouter au panier</Text>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  safeContainer: {
+  mainContainer: {
     flex: 1,
     backgroundColor: Colors.background,
   },
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+    position: 'relative',
   },
-  header: {
-    flexDirection: 'row',
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 20,
-    paddingBottom: 10,
-    paddingHorizontal: 20,
-    backgroundColor: Colors.white,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.gray200,
+  },
+  bannerContainer: {
+    width: '100%',
+    height: 220,
+    backgroundColor: Colors.gray300,
+    overflow: 'hidden',
+  },
+  bannerImage: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  bannerOverlay: {
+    width: '100%',
+    height: '100%',
+    paddingTop: 40,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    justifyContent: 'flex-end',
+  },
+  bannerTitle: {
+    fontSize: 26,
+    fontWeight: 'bold',
+    color: Colors.white,
+    marginBottom: 4,
+  },
+  bannerPrice: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: Colors.white,
   },
   backIcon: {
-    paddingRight: 10,
-  },
-  title: {
-    flex: 1,
-    fontSize: 24,
-    fontWeight: '700',
-    color: Colors.text,
-    textAlign: 'center',
-  },
-  scrollContainer: {
-    padding: 20,
-    paddingBottom: 80, // pour laisser de la place au bouton fixe
-  },
-  tagsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  tag: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    position: 'absolute',
+    top: 60,
+    left: 16,
+    zIndex: 2,
+    backgroundColor: Colors.white,
+    padding: 6,
     borderRadius: 20,
   },
-  tagText: {
+  scrollContentContainer: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+  chipContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  chipBase: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 30,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  typeChip: {
+    backgroundColor: Colors.secondary,
+  },
+  participantsChip: {
+    backgroundColor: Colors.accent,
+  },
+  typeChipText: {
+    fontSize: 14,
+    color: Colors.text,
+    fontWeight: '600',
+  },
+  chipText: {
     fontSize: 14,
     color: Colors.white,
     fontWeight: '600',
   },
-  detailSection: {
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.text,
-    marginBottom: 6,
-  },
-  sectionContent: {
-    fontSize: 16,
-    color: Colors.gray700,
-    lineHeight: 22,
-  },
-  addButton: {
-    backgroundColor: Colors.accent,
-    paddingVertical: 15,
-    marginHorizontal: 20,
+  detailCard: {
+    backgroundColor: Colors.white,
     borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    elevation: 2,
+    shadowColor: Colors.text,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.text,
+    marginBottom: 8,
+  },
+  cardSubtitle: {
+    marginTop: 6,
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.gray700,
+    marginBottom: 4,
+  },
+  cardText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: Colors.gray700,
+  },
+  infoLine: {
+    flexDirection: 'row',
     alignItems: 'center',
+    marginVertical: 8,
+  },
+  infoIcon: {
+    marginRight: 6,
+  },
+  infoText: {
+    fontSize: 15,
+    color: Colors.gray700,
+  },
+  fixedButton: {
     position: 'absolute',
     bottom: 20,
-    left: 0,
-    right: 0,
+    backgroundColor: Colors.accent,
+    paddingVertical: 16,
+    width: '80%',
+    alignSelf: 'center',
+    borderRadius: 30,
+    alignItems: 'center',
+    elevation: 2,
   },
-  addButtonText: {
+  fixedButtonText: {
     color: Colors.white,
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  backButton: {
+    backgroundColor: Colors.primaryLight,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  backButtonText: {
+    fontSize: 16,
+    color: Colors.white,
   },
   errorContainer: {
     flex: 1,
@@ -386,16 +433,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
   },
-  backButton: {
-    backgroundColor: Colors.primaryLight,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  backButtonText: {
-    fontSize: 16,
-    color: Colors.white,
-  },
 });
-
-export default EventDetailScreen;

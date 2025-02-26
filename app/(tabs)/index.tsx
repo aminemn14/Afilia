@@ -7,209 +7,16 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { MotiView } from 'moti';
 import Colors from '../constants/Colors';
 import { useRouter } from 'expo-router';
-import type { Event, Location } from '../types';
+import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const MOCK_LOCATIONS: Location[] = [
-  {
-    id: '1',
-    name: 'Salle des Concerts',
-    latitude: 50.64669971162,
-    longitude: 3.051274251686708,
-    created_at: new Date().toISOString(),
-    address: "98 Façade de l'Esplanade",
-    city: 'Lille',
-    zipcode: '59000',
-    event_types: ['concert'],
-    image_url: '',
-    description: 'Une salle dédiée aux concerts rock et pop.',
-    tel: '01 23 45 67 89',
-    email: 'contact@salledesconcerts.fr',
-  },
-  {
-    id: '2',
-    name: 'Théâtre de la Ville',
-    latitude: 50.63794445148652,
-    longitude: 3.0969858745452283,
-    created_at: new Date().toISOString(),
-    address: '64 Rue Louis Braille',
-    city: 'Lille',
-    zipcode: '59000',
-    event_types: ['théâtre'],
-    image_url: '',
-    description: 'Un théâtre historique proposant des pièces classiques.',
-    tel: '01 98 76 54 32',
-    email: 'contact@theatre-ville.fr',
-  },
-  {
-    id: '3',
-    name: "Musée d'Art",
-    latitude: 50.64,
-    longitude: 3.05,
-    created_at: new Date().toISOString(),
-    address: '12 Rue du Louvre',
-    city: 'Lille',
-    zipcode: '59000',
-    event_types: ['museum'],
-    image_url: '',
-    description: 'Musée consacré aux arts modernes et contemporains.',
-    tel: '09 87 65 43 21',
-    email: 'info@museedart.fr',
-  },
-  {
-    id: '4',
-    name: 'Centre Chorale',
-    latitude: 50.635,
-    longitude: 3.055,
-    created_at: new Date().toISOString(),
-    address: '5 Avenue de la Musique',
-    city: 'Lille',
-    zipcode: '59000',
-    event_types: ['chorale'],
-    image_url: '',
-    description: 'Lieu de répétition et d’auditions pour chorales.',
-    tel: '01 11 22 33 44',
-    email: 'chorale@centre.fr',
-  },
-  {
-    id: '5',
-    name: "Galerie d'Exposition",
-    latitude: 50.642,
-    longitude: 3.045,
-    created_at: new Date().toISOString(),
-    address: '20 Rue des Arts',
-    city: 'Lille',
-    zipcode: '59000',
-    event_types: ['exposition'],
-    image_url: '',
-    description:
-      'Galerie privée exposant des artistes locaux et internationaux.',
-    tel: '06 12 34 56 78',
-    email: 'galerie@exposition.fr',
-  },
-];
-
-const MOCK_EVENTS: Event[] = [
-  {
-    id: '1',
-    name: 'Concert Rock',
-    event_type: 'concert',
-    current_participants: 50,
-    max_participants: 100,
-    remaining_participants: 50,
-    location_id: '1',
-    created_at: new Date().toISOString(),
-    status: 'open',
-    price: 20,
-    is_free: false,
-    organizer: 'John Doe Productions',
-    tel: '01 23 45 67 89',
-    email: 'contact@johndoeprod.fr',
-    description: 'Un grand concert de rock avec plusieurs groupes locaux.',
-    start_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Ex: dans 7 jours
-    end_date: new Date(
-      Date.now() + 7 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000
-    ).toISOString(),
-    start_time: '19:00',
-    end_time: '23:00',
-  },
-
-  {
-    id: '2',
-    name: 'Théâtre Classique',
-    event_type: 'theatre',
-    current_participants: 30,
-    max_participants: 50,
-    remaining_participants: 20,
-    location_id: '2',
-    created_at: new Date().toISOString(),
-    status: 'open',
-    price: 15,
-    is_free: false,
-    organizer: 'Compagnie Molière',
-    tel: '01 98 76 54 32',
-    email: 'theatre@classique.fr',
-    description: 'Représentation théâtrale inspirée d’œuvres classiques.',
-    start_date: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
-    end_date: new Date(
-      Date.now() + 10 * 24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000
-    ).toISOString(),
-    start_time: '20:00',
-    end_time: '23:00',
-  },
-  {
-    id: '3',
-    name: "Exposition d'Art Moderne",
-    event_type: 'exposition',
-    current_participants: 80,
-    max_participants: 120,
-    remaining_participants: 40,
-    location_id: '5',
-    created_at: new Date().toISOString(),
-    status: 'open',
-    price: 0,
-    is_free: true,
-    organizer: 'Galerie Contemporaine',
-    tel: '09 87 65 43 21',
-    email: 'info@artmoderne.com',
-    description: "Découvrez les œuvres d'artistes émergents et reconnus.",
-    start_date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-    end_date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
-    start_time: '10:00',
-    end_time: '18:00',
-  },
-  {
-    id: '4',
-    name: 'Visite au Musée',
-    event_type: 'museum',
-    current_participants: 20,
-    max_participants: 40,
-    remaining_participants: 20,
-    location_id: '3',
-    created_at: new Date().toISOString(),
-    status: 'open',
-    price: 10,
-    is_free: false,
-    organizer: 'Musée National',
-    tel: '01 11 22 33 44',
-    email: 'contact@museenational.fr',
-    description: 'Visite guidée des collections permanentes et temporaires.',
-    start_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-    end_date: new Date(
-      Date.now() + 3 * 24 * 60 * 60 * 1000 + 4 * 60 * 60 * 1000
-    ).toISOString(),
-    start_time: '14:00',
-    end_time: '18:00',
-  },
-  {
-    id: '5',
-    name: "Chorale d'été",
-    event_type: 'chorale',
-    current_participants: 15,
-    max_participants: 30,
-    remaining_participants: 15,
-    location_id: '4',
-    created_at: new Date().toISOString(),
-    status: 'open',
-    price: 5,
-    is_free: false,
-    organizer: 'Association Chorale Libre',
-    tel: '06 12 34 56 78',
-    email: 'chorale@association.fr',
-    description: "Une chorale accessible à tous pour célébrer l'été.",
-    start_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-    end_date: new Date(
-      Date.now() + 14 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000
-    ).toISOString(),
-    start_time: '19:00',
-    end_time: '21:00',
-  },
-];
+import apiConfig from '@/config/apiConfig';
+import { User } from '../types';
 
 const EVENT_TYPES = [
   'Tous',
@@ -220,18 +27,35 @@ const EVENT_TYPES = [
   'Chorale',
 ];
 
-function getLocationById(locationId: string): Location | undefined {
-  return MOCK_LOCATIONS.find((location) => location.id === locationId);
+function getLocationById(locationId: any, locations: any[]) {
+  return locations.find(
+    (loc) => loc._id === locationId || loc.id === locationId
+  );
 }
 
 export default function HomeScreen() {
-  const [user, setUser] = useState<any>(null);
-  const [firstName, setFirstName] = useState<string | null>(null);
   const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [firstName, setFirstName] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState('Tous');
-  const [events, setEvents] = useState(MOCK_EVENTS);
+  const [events, setEvents] = useState<
+    {
+      name: string;
+      event_type: string;
+      location_id: string;
+      remaining_participants: number;
+      _id?: string;
+      id?: string;
+    }[]
+  >([]);
+  const [locations, setLocations] = useState<
+    { address: string; city: string; _id?: string; id?: string }[]
+  >([]);
+  const [loadingEvents, setLoadingEvents] = useState(false);
+  const [loadingLocations, setLoadingLocations] = useState(false);
 
+  // Récupération des informations de l'utilisateur
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -248,10 +72,57 @@ export default function HomeScreen() {
         );
       }
     };
-
     fetchUserData();
   }, []);
 
+  // Récupération des événements depuis l'API
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        setLoadingEvents(true);
+        const response = await axios.get<
+          {
+            name: string;
+            event_type: string;
+            location_id: string;
+            remaining_participants: number;
+            _id?: string;
+            id?: string;
+          }[]
+        >(`${apiConfig.baseURL}/api/events`);
+        console.log('Events fetched:', response.data);
+        setEvents(response.data);
+      } catch (err) {
+        console.error('Erreur lors de la récupération des événements :', err);
+        Alert.alert('Erreur', 'Impossible de récupérer les événements.');
+      } finally {
+        setLoadingEvents(false);
+      }
+    };
+    fetchEvents();
+  }, []);
+
+  // Récupération des lieux depuis l'API
+  useEffect(() => {
+    const fetchLocations = async () => {
+      try {
+        setLoadingLocations(true);
+        const response = await axios.get<
+          { address: string; city: string; _id?: string; id?: string }[]
+        >(`${apiConfig.baseURL}/api/locations`);
+        console.log('Locations fetched:', response.data);
+        setLocations(response.data);
+      } catch (err) {
+        console.error('Erreur lors de la récupération des lieux :', err);
+        Alert.alert('Erreur', 'Impossible de récupérer les lieux.');
+      } finally {
+        setLoadingLocations(false);
+      }
+    };
+    fetchLocations();
+  }, []);
+
+  // Filtre des événements en fonction de la recherche et du type sélectionné
   const filteredEvents = events.filter((event) => {
     const matchesSearch = event.name
       .toLowerCase()
@@ -262,8 +133,21 @@ export default function HomeScreen() {
     return matchesSearch && matchesType;
   });
 
-  const renderEventCard = ({ item, index }: { item: Event; index: number }) => {
-    const location = getLocationById(item.location_id);
+  const renderEventCard = ({
+    item,
+    index,
+  }: {
+    item: {
+      name: string;
+      event_type: string;
+      location_id: string;
+      remaining_participants: number;
+      _id?: string;
+      id?: string;
+    };
+    index: number;
+  }) => {
+    const location = getLocationById(item.location_id, locations);
     return (
       <MotiView
         from={{ opacity: 0, scale: 0.9 }}
@@ -277,23 +161,20 @@ export default function HomeScreen() {
             <Text style={styles.eventType}>{item.event_type}</Text>
           </View>
         </View>
-
         <View style={styles.participantsContainer}>
           <Ionicons name="people" size={20} color={Colors.text} />
           <Text style={styles.participantsText}>
             {item.remaining_participants} places restantes
           </Text>
         </View>
-
         {location && (
           <Text style={styles.locationText}>
             {location.address}, {location.city}
           </Text>
         )}
-
         <TouchableOpacity
           style={styles.joinButton}
-          onPress={() => router.push(`/(events)/event/${item.id}`)}
+          onPress={() => router.push(`/(events)/event/${item._id || item.id}`)}
         >
           <Text style={styles.joinButtonText}>Participer</Text>
         </TouchableOpacity>
@@ -301,8 +182,7 @@ export default function HomeScreen() {
     );
   };
 
-  if (firstName === null) {
-    // Affiche un indicateur de chargement tant que le prénom n'est pas récupéré
+  if (firstName === null || loadingEvents || loadingLocations) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={Colors.primary} />
@@ -373,7 +253,7 @@ export default function HomeScreen() {
       <FlatList
         data={filteredEvents}
         renderItem={renderEventCard}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item._id || item.id || ''}
         contentContainerStyle={styles.eventsList}
         showsVerticalScrollIndicator={false}
       />

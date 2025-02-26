@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Dimensions,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import MapView, { Marker, Callout } from 'react-native-maps';
 import { MotiView } from 'moti';
@@ -18,29 +20,32 @@ import {
   TicketIcon,
 } from 'react-native-heroicons/outline';
 import { router } from 'expo-router';
+import axios from 'axios';
 
 import Colors from '../constants/Colors';
-import type { Location, Event } from '@/app/types';
+import apiConfig from '@/config/apiConfig';
+import { Location, Event } from '../types';
 
 function getIconForEventType(
   eventTypes: string[],
   size: number,
   color: string
 ): JSX.Element {
-  // Si le tableau est vide ou si le lieu a plusieurs types, on affiche l'icône par défaut (MapPinIcon)
+  // Si le tableau est vide ou si le lieu a plusieurs types => icône par défaut
   if (!eventTypes || eventTypes.length !== 1) {
     return <MapPinIcon size={size} color={color} strokeWidth={1.8} />;
   }
 
-  // S'il n'y a qu'un seul type, on choisit l'icône en fonction de ce type
   const type = eventTypes[0].toLowerCase();
   switch (type) {
     case 'chorale':
       return <MusicalNoteIcon size={size} color={color} strokeWidth={1.8} />;
+    case 'musée':
     case 'museum':
       return (
         <BuildingLibraryIcon size={size} color={color} strokeWidth={1.8} />
       );
+    case 'théâtre':
     case 'theatre':
       return <TicketIcon size={size} color={color} strokeWidth={1.8} />;
     case 'concert':
@@ -52,211 +57,67 @@ function getIconForEventType(
   }
 }
 
-const MOCK_LOCATIONS: Location[] = [
-  {
-    id: '1',
-    name: 'Salle des Concerts',
-    latitude: 50.64669971162,
-    longitude: 3.051274251686708,
-    created_at: new Date().toISOString(),
-    address: "98 Façade de l'Esplanade",
-    city: 'Lille',
-    zipcode: '59000',
-    event_types: ['concert'],
-    image_url: '',
-    description: 'Une salle dédiée aux concerts rock et pop.',
-    tel: '01 23 45 67 89',
-    email: 'contact@salledesconcerts.fr',
-  },
-  {
-    id: '2',
-    name: 'Théâtre de la Ville',
-    latitude: 50.63794445148652,
-    longitude: 3.0969858745452283,
-    created_at: new Date().toISOString(),
-    address: '64 Rue Louis Braille',
-    city: 'Lille',
-    zipcode: '59000',
-    event_types: ['théâtre'],
-    image_url: '',
-    description: 'Un théâtre historique proposant des pièces classiques.',
-    tel: '01 98 76 54 32',
-    email: 'contact@theatre-ville.fr',
-  },
-  {
-    id: '3',
-    name: "Musée d'Art",
-    latitude: 50.64,
-    longitude: 3.05,
-    created_at: new Date().toISOString(),
-    address: '12 Rue du Louvre',
-    city: 'Lille',
-    zipcode: '59000',
-    event_types: ['museum'],
-    image_url: '',
-    description: 'Musée consacré aux arts modernes et contemporains.',
-    tel: '09 87 65 43 21',
-    email: 'info@museedart.fr',
-  },
-  {
-    id: '4',
-    name: 'Centre Chorale',
-    latitude: 50.635,
-    longitude: 3.055,
-    created_at: new Date().toISOString(),
-    address: '5 Avenue de la Musique',
-    city: 'Lille',
-    zipcode: '59000',
-    event_types: ['chorale'],
-    image_url: '',
-    description: 'Lieu de répétition et d’auditions pour chorales.',
-    tel: '01 11 22 33 44',
-    email: 'chorale@centre.fr',
-  },
-  {
-    id: '5',
-    name: "Galerie d'Exposition",
-    latitude: 50.642,
-    longitude: 3.045,
-    created_at: new Date().toISOString(),
-    address: '20 Rue des Arts',
-    city: 'Lille',
-    zipcode: '59000',
-    event_types: ['exposition'],
-    image_url: '',
-    description:
-      'Galerie privée exposant des artistes locaux et internationaux.',
-    tel: '06 12 34 56 78',
-    email: 'galerie@exposition.fr',
-  },
-];
-
-const MOCK_EVENTS: Event[] = [
-  {
-    id: '1',
-    name: 'Concert Rock',
-    event_type: 'concert',
-    current_participants: 50,
-    max_participants: 100,
-    remaining_participants: 50,
-    location_id: '1',
-    created_at: new Date().toISOString(),
-    status: 'open',
-    price: 20,
-    is_free: false,
-    organizer: 'John Doe Productions',
-    tel: '01 23 45 67 89',
-    email: 'contact@johndoeprod.fr',
-    description: 'Un grand concert de rock avec plusieurs groupes locaux.',
-    start_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Ex: dans 7 jours
-    end_date: new Date(
-      Date.now() + 7 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000
-    ).toISOString(),
-    start_time: '19:00',
-    end_time: '23:00',
-  },
-
-  {
-    id: '2',
-    name: 'Théâtre Classique',
-    event_type: 'theatre',
-    current_participants: 30,
-    max_participants: 50,
-    remaining_participants: 20,
-    location_id: '2',
-    created_at: new Date().toISOString(),
-    status: 'open',
-    price: 15,
-    is_free: false,
-    organizer: 'Compagnie Molière',
-    tel: '01 98 76 54 32',
-    email: 'theatre@classique.fr',
-    description: 'Représentation théâtrale inspirée d’œuvres classiques.',
-    start_date: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
-    end_date: new Date(
-      Date.now() + 10 * 24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000
-    ).toISOString(),
-    start_time: '20:00',
-    end_time: '23:00',
-  },
-  {
-    id: '3',
-    name: "Exposition d'Art Moderne",
-    event_type: 'exposition',
-    current_participants: 80,
-    max_participants: 120,
-    remaining_participants: 40,
-    location_id: '5',
-    created_at: new Date().toISOString(),
-    status: 'open',
-    price: 0,
-    is_free: true,
-    organizer: 'Galerie Contemporaine',
-    tel: '09 87 65 43 21',
-    email: 'info@artmoderne.com',
-    description: "Découvrez les œuvres d'artistes émergents et reconnus.",
-    start_date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-    end_date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
-    start_time: '10:00',
-    end_time: '18:00',
-  },
-  {
-    id: '4',
-    name: 'Visite au Musée',
-    event_type: 'museum',
-    current_participants: 20,
-    max_participants: 40,
-    remaining_participants: 20,
-    location_id: '3',
-    created_at: new Date().toISOString(),
-    status: 'open',
-    price: 10,
-    is_free: false,
-    organizer: 'Musée National',
-    tel: '01 11 22 33 44',
-    email: 'contact@museenational.fr',
-    description: 'Visite guidée des collections permanentes et temporaires.',
-    start_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-    end_date: new Date(
-      Date.now() + 3 * 24 * 60 * 60 * 1000 + 4 * 60 * 60 * 1000
-    ).toISOString(),
-    start_time: '14:00',
-    end_time: '18:00',
-  },
-  {
-    id: '5',
-    name: "Chorale d'été",
-    event_type: 'chorale',
-    current_participants: 15,
-    max_participants: 30,
-    remaining_participants: 15,
-    location_id: '4',
-    created_at: new Date().toISOString(),
-    status: 'open',
-    price: 5,
-    is_free: false,
-    organizer: 'Association Chorale Libre',
-    tel: '06 12 34 56 78',
-    email: 'chorale@association.fr',
-    description: "Une chorale accessible à tous pour célébrer l'été.",
-    start_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-    end_date: new Date(
-      Date.now() + 14 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000
-    ).toISOString(),
-    start_time: '19:00',
-    end_time: '21:00',
-  },
-];
-
 export default function MapScreen() {
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(
     null
   );
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
 
+  // Récupération des lieux
+  useEffect(() => {
+    const fetchLocations = async () => {
+      try {
+        const response = await axios.get<Location[]>(
+          `${apiConfig.baseURL}/api/locations`
+        );
+        setLocations(response.data);
+      } catch (error) {
+        Alert.alert('Erreur', 'Impossible de récupérer les lieux.');
+        console.error(error);
+      }
+    };
+
+    // Récupération des événements
+    const fetchEvents = async () => {
+      try {
+        const response = await axios.get<Event[]>(
+          `${apiConfig.baseURL}/api/events`
+        );
+        setEvents(response.data);
+      } catch (error) {
+        Alert.alert('Erreur', 'Impossible de récupérer les événements.');
+        console.error(error);
+      }
+    };
+
+    Promise.all([fetchLocations(), fetchEvents()]).finally(() => {
+      setLoading(false);
+    });
+  }, []);
+
+  // Pour récupérer les événements liés à un lieu donné
   const getEventsAtLocation = (locationId: string) => {
-    return MOCK_EVENTS.filter((event) => event.location_id === locationId);
+    return events.filter((event) => event.location_id === locationId);
   };
+
+  const getEventTypesForLocation = (locationId: string) => {
+    const types = events
+      .filter((event) => event.location_id === locationId)
+      .map((e) => e.event_type.toLowerCase());
+
+    return types;
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -269,30 +130,39 @@ export default function MapScreen() {
           longitudeDelta: 0.0421,
         }}
       >
-        {MOCK_LOCATIONS.map((location) => (
-          <Marker
-            key={location.id}
-            coordinate={{
-              latitude: location.latitude,
-              longitude: location.longitude,
-            }}
-            onPress={() => setSelectedLocation(location)}
-          >
-            <View style={styles.markerContainer}>
-              {getIconForEventType(location.event_types, 24, Colors.primary)}
-            </View>
-            <Callout>
-              <View style={styles.callout}>
-                <Text style={styles.calloutTitle}>{location.name}</Text>
-                <Text style={styles.calloutAddress}>
-                  {location.address}
-                  {'\n'}
-                  {location.city} - {location.zipcode}
-                </Text>
+        {locations.map((location) => {
+          const locationId = location._id || location.id;
+          if (!locationId) return null;
+
+          const eventTypes = getEventTypesForLocation(locationId);
+
+          return (
+            <Marker
+              key={locationId}
+              coordinate={{
+                latitude: location.latitude,
+                longitude: location.longitude,
+              }}
+              onPress={() => setSelectedLocation(location)}
+            >
+              <View style={styles.markerContainer}>
+                {getIconForEventType(eventTypes, 24, Colors.primary)}
               </View>
-            </Callout>
-          </Marker>
-        ))}
+              <Callout>
+                <View style={styles.callout}>
+                  <Text style={styles.calloutTitle}>
+                    {location.name || 'Lieu sans nom'}
+                  </Text>
+                  <Text style={styles.calloutAddress}>
+                    {location.address}
+                    {'\n'}
+                    {location.city} {location.zipcode}
+                  </Text>
+                </View>
+              </Callout>
+            </Marker>
+          );
+        })}
       </MapView>
 
       {selectedLocation && (
@@ -303,7 +173,9 @@ export default function MapScreen() {
           exit={{ translateY: 300 }}
         >
           <View style={styles.locationHeader}>
-            <Text style={styles.locationName}>{selectedLocation.name}</Text>
+            <Text style={styles.locationName}>
+              {selectedLocation.name || 'Lieu sans nom'}
+            </Text>
             <TouchableOpacity
               style={styles.closeButton}
               onPress={() => setSelectedLocation(null)}
@@ -318,34 +190,45 @@ export default function MapScreen() {
           </Text>
 
           <View style={styles.eventsContainer}>
-            {getEventsAtLocation(selectedLocation.id).length === 0 ? (
+            {getEventsAtLocation(
+              selectedLocation._id || selectedLocation.id || ''
+            ).length === 0 ? (
               <Text style={styles.noEventText}>Aucun événement Actif</Text>
             ) : (
               <>
                 <Text style={styles.eventsTitle}>Événements Actifs</Text>
-                {getEventsAtLocation(selectedLocation.id).map((event) => (
-                  <View key={event.id} style={styles.eventCard}>
-                    <View style={styles.eventInfo}>
-                      <Text style={styles.eventName}>{event.name}</Text>
-                      <View style={styles.participantsContainer}>
-                        <Ionicons
-                          name="people"
-                          size={16}
-                          color={Colors.primary}
-                        />
-                        <Text style={styles.participantsText}>
-                          {event.remaining_participants} places restantes
-                        </Text>
+                {getEventsAtLocation(
+                  selectedLocation._id || selectedLocation.id || ''
+                ).map((event) => {
+                  const eventId = event._id || event.id;
+                  return (
+                    <View key={eventId} style={styles.eventCard}>
+                      <View style={styles.eventInfo}>
+                        <Text style={styles.eventName}>{event.name}</Text>
+                        <View style={styles.participantsContainer}>
+                          <Ionicons
+                            name="people"
+                            size={16}
+                            color={Colors.primary}
+                          />
+                          <Text style={styles.participantsText}>
+                            {event.remaining_participants} places restantes
+                          </Text>
+                        </View>
                       </View>
+                      <TouchableOpacity
+                        style={styles.joinButton}
+                        onPress={() =>
+                          router.push(
+                            `/(events)/event/${event._id || event.id}`
+                          )
+                        }
+                      >
+                        <Text style={styles.joinButtonText}>Participer</Text>
+                      </TouchableOpacity>
                     </View>
-                    <TouchableOpacity
-                      style={styles.joinButton}
-                      onPress={() => router.push(`/(events)/event/${event.id}`)}
-                    >
-                      <Text style={styles.joinButtonText}>Participer</Text>
-                    </TouchableOpacity>
-                  </View>
-                ))}
+                  );
+                })}
               </>
             )}
           </View>
@@ -356,6 +239,11 @@ export default function MapScreen() {
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   container: {
     flex: 1,
   },
