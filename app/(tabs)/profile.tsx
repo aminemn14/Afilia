@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import Colors from '../constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import apiConfig from '@/config/apiConfig';
@@ -21,49 +21,48 @@ export default function ProfileScreen() {
   const router = useRouter();
   const socketRef = useSocket();
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const userString = await AsyncStorage.getItem('user');
-        if (userString) {
-          const userObj = JSON.parse(userString);
-          setUser(userObj);
-          const userId = userObj.id || userObj._id;
-          // Récupérer le nombre d'invitations en attente (pending) pour ce compte (receiver)
-          const response = await fetch(
-            `${apiConfig.baseURL}/api/invitations?receiverId=${userId}&status=pending`
-          );
-          if (response.ok) {
-            const data = await response.json();
-            // On suppose que data est un tableau d'invitations
-            setInvitationCount(Array.isArray(data) ? data.length : 0);
-          }
-          // Rejoindre la salle dédiée à l'utilisateur pour recevoir des mises à jour
-          if (socketRef.current) {
-            socketRef.current.emit('joinRoom', userId);
-          }
-        }
-      } catch (error) {
-        console.error(
-          'Erreur lors de la récupération des infos utilisateur',
-          error
+  const fetchUserData = async () => {
+    try {
+      const userString = await AsyncStorage.getItem('user');
+      if (userString) {
+        const userObj = JSON.parse(userString);
+        setUser(userObj);
+        const userId = userObj.id || userObj._id;
+        const response = await fetch(
+          `${apiConfig.baseURL}/api/invitations?receiverId=${userId}&status=pending`
         );
+        if (response.ok) {
+          const data = await response.json();
+          setInvitationCount(Array.isArray(data) ? data.length : 0);
+        }
+        if (socketRef.current) {
+          socketRef.current.emit('joinRoom', userId);
+        }
       }
-    };
-    fetchUser();
-  }, [socketRef]);
+    } catch (error) {
+      console.error(
+        'Erreur lors de la récupération des infos utilisateur',
+        error
+      );
+    }
+  };
 
-  // Écouter les événements Socket.IO pour actualiser le compteur en direct
-  useEffect(() => {
+  // Rafraîchir les données à chaque fois que le screen devient actif
+  useFocusEffect(
+    useCallback(() => {
+      fetchUserData();
+    }, [socketRef])
+  );
+
+  // Écouter les événements Socket pour mettre à jour le compteur en direct
+  React.useEffect(() => {
     if (!socketRef.current) return;
 
     const handleInvitationReceived = (invitation: any) => {
-      // Incrémente le compteur
       setInvitationCount((prev) => prev + 1);
     };
 
     const handleInvitationUpdated = (invitation: any) => {
-      // Si une invitation a été traitée, décrémente le compteur (on peut ajuster la logique selon vos besoins)
       setInvitationCount((prev) => (prev > 0 ? prev - 1 : 0));
     };
 
@@ -89,14 +88,13 @@ export default function ProfileScreen() {
   if (!user) {
     return (
       <View style={styles.loadingContainer}>
-        <Text>Chargement...</Text>
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.headerButton}

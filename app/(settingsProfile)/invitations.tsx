@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '../constants/Colors';
 import apiConfig from '@/config/apiConfig';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Invitation } from '../types';
 
 export default function InvitationsScreen() {
@@ -21,51 +21,47 @@ export default function InvitationsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchInvitations = async () => {
-      try {
-        // Récupérer l'utilisateur connecté depuis AsyncStorage
-        const userString = await AsyncStorage.getItem('user');
-        const currentUser = userString ? JSON.parse(userString) : null;
-        const userId = currentUser ? currentUser.id || currentUser._id : null;
-        if (!userId) {
-          setLoading(false);
-          router.replace('/login');
-          return;
-        }
-        setCurrentUserId(userId);
-
-        // Appeler l'API pour récupérer les invitations reçues par l'utilisateur
-        const response = await fetch(
-          `${apiConfig.baseURL}/api/invitations/${userId}`
-        );
-        if (!response.ok) {
-          throw new Error(`Erreur HTTP ${response.status}`);
-        }
-        const result = await response.json();
-        // On suppose que l'API renvoie un tableau d'invitations
-        setInvitations(Array.isArray(result) ? result : result.invitations);
-      } catch (err: any) {
-        console.error('Erreur lors du chargement des invitations :', err);
-        setError(err.message);
-      } finally {
+  const fetchInvitations = async () => {
+    try {
+      const userString = await AsyncStorage.getItem('user');
+      const currentUser = userString ? JSON.parse(userString) : null;
+      const userId = currentUser ? currentUser.id || currentUser._id : null;
+      if (!userId) {
         setLoading(false);
+        router.replace('/login');
+        return;
       }
-    };
+      setCurrentUserId(userId);
+      const response = await fetch(
+        `${apiConfig.baseURL}/api/invitations/${userId}`
+      );
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP ${response.status}`);
+      }
+      const result = await response.json();
+      setInvitations(Array.isArray(result) ? result : result.invitations);
+    } catch (err: any) {
+      console.error('Erreur lors du chargement des invitations :', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchInvitations();
-  }, []);
+  // Rafraîchir la liste à chaque fois que l'écran devient actif
+  useFocusEffect(
+    useCallback(() => {
+      fetchInvitations();
+    }, [])
+  );
 
-  // Fonction pour retirer une invitation de la liste locale
   const removeInvitationFromList = (invitationId: string) => {
     setInvitations((prev) => prev.filter((inv) => inv._id !== invitationId));
   };
 
-  // Gérer l'acceptation d'une invitation
   const handleAccept = async (invitation: Invitation) => {
     if (!currentUserId) return;
     try {
-      // Mettre à jour l'invitation en accepted
       const response = await fetch(
         `${apiConfig.baseURL}/api/invitations/${invitation._id}`,
         {
@@ -77,11 +73,7 @@ export default function InvitationsScreen() {
       if (!response.ok) {
         throw new Error(`Erreur HTTP ${response.status}`);
       }
-      // Retirer l'invitation de la liste
       removeInvitationFromList(invitation._id);
-
-      // Ajouter l'expéditeur en ami
-      // On suppose que l'invitation est peuplée et que senderId est un objet
       const friendId =
         typeof invitation.senderId === 'object'
           ? invitation.senderId._id
@@ -109,10 +101,8 @@ export default function InvitationsScreen() {
     }
   };
 
-  // Gérer le refus d'une invitation
   const handleReject = async (invitation: Invitation) => {
     try {
-      // Mettre à jour l'invitation en rejected
       const response = await fetch(
         `${apiConfig.baseURL}/api/invitations/${invitation._id}`,
         {
@@ -124,7 +114,6 @@ export default function InvitationsScreen() {
       if (!response.ok) {
         throw new Error(`Erreur HTTP ${response.status}`);
       }
-      // Retirer l'invitation de la liste
       removeInvitationFromList(invitation._id);
       Alert.alert('Invitation refusée', "L'invitation a été refusée.");
     } catch (error: any) {
@@ -134,7 +123,6 @@ export default function InvitationsScreen() {
   };
 
   const renderInvitation = ({ item }: { item: Invitation }) => {
-    // senderId est peuplé : on affiche le prénom et le nom de l'expéditeur
     const sender = item.senderId;
     return (
       <View style={styles.invitationCard}>
