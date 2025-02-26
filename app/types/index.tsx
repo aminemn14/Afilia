@@ -1,5 +1,3 @@
-type EventType = 'théâtre' | 'concert' | 'chorale' | 'exposition' | 'museum';
-
 export interface User {
   _id: string;
   firstname: string;
@@ -53,7 +51,7 @@ export interface Location {
   address: string;
   city: string;
   zipcode: string;
-  event_types: EventType[];
+  event_types: ('théâtre' | 'concert' | 'chorale' | 'exposition' | 'museum')[];
   image_url: string;
   description: string;
   tel: string;
@@ -66,7 +64,18 @@ export interface Message {
   receiver_id: string;
   content: string;
   created_at: string;
-  read: boolean;
+}
+
+export interface Conversation {
+  id: string;
+  friend: {
+    id: string;
+    name: string;
+    avatar: string;
+  };
+  lastMessage: string;
+  updatedAt: string;
+  unread: boolean;
 }
 
 export interface Friend {
@@ -97,6 +106,13 @@ export interface Invitation {
   receiverId: string;
   status: 'pending' | 'accepted' | 'rejected';
   createdAt: string;
+}
+
+export interface MessageType {
+  id: string;
+  text: string;
+  sender: 'me' | 'friend';
+  createdAt: Date;
 }
 
 const TypesPage = () => {
