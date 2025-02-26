@@ -71,7 +71,7 @@ exports.removeFriend = async (req, res) => {
   }
 };
 
-// Version modifiée de addFriend pour créer une relation mutuelle (vous pouvez choisir l'une ou l'autre version)
+// Créer une relation mutuelle
 exports.addFriend = async (req, res) => {
   try {
     const { userId, friendId } = req.body;

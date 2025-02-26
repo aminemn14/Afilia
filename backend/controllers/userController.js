@@ -74,7 +74,7 @@ exports.createUser = async (req, res) => {
       createdAt,
     } = req.body;
 
-    // Vérification que tous les champs obligatoires sont présents (vous pouvez adapter selon vos besoins)
+    // Vérification que tous les champs obligatoires sont présents
     if (
       !username ||
       !email ||

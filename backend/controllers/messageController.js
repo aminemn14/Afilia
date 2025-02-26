@@ -1,4 +1,5 @@
 const Message = require('../models/Message');
+const mongoose = require('mongoose');
 
 // Obtenir tous les messages
 exports.getAllMessages = async (req, res) => {
@@ -26,8 +27,15 @@ exports.createMessage = async (req, res) => {
   try {
     const newMessage = new Message(req.body);
     const savedMessage = await newMessage.save();
+
+    // Diffuser le message aux rooms correspondantes
+    const io = req.app.get('socketio');
+    io.to(savedMessage.receiver_id.toString()).emit('newMessage', savedMessage);
+    io.to(savedMessage.sender_id.toString()).emit('newMessage', savedMessage);
+
     res.status(201).json(savedMessage);
   } catch (err) {
+    console.error('Erreur lors de la création du message:', err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -55,6 +63,19 @@ exports.deleteMessage = async (req, res) => {
     if (!deletedMessage)
       return res.status(404).json({ error: 'Message non trouvé' });
     res.json({ message: 'Message supprimé' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Récupérer les messages d'une conversation
+exports.getMessagesForConversation = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const messages = await Message.find({
+      conversation_id: conversationId,
+    }).sort({ created_at: -1 });
+    res.json(messages);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

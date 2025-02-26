@@ -8,7 +8,7 @@ router.post('/', invitationController.createInvitation);
 // Récupérer les invitations reçues par un utilisateur (via /api/invitations/:userId)
 router.get('/:userId', invitationController.getInvitationsByReceiver);
 
-// Nouvelle route pour récupérer les invitations avec query parameters (si besoin)
+// Récupérer les invitations avec query parameters
 router.get('/', invitationController.getInvitations);
 
 // Mettre à jour une invitation (pour accepter ou refuser)

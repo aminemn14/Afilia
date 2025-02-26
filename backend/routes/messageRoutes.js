@@ -7,5 +7,9 @@ router.get('/:id', messageController.getMessageById);
 router.post('/', messageController.createMessage);
 router.put('/:id', messageController.updateMessage);
 router.delete('/:id', messageController.deleteMessage);
+router.get(
+  '/conversations/:conversationId/messages',
+  messageController.getMessagesForConversation
+);
 
 module.exports = router;
