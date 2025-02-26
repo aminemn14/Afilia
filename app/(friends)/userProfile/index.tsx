@@ -28,7 +28,7 @@ const UserProfileScreen = () => {
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
-        // 1. Récupérer les détails du profil consulté
+        // Récupérer les détails du profil consulté
         const response = await fetch(
           `${apiConfig.baseURL}/api/users/${friendId}`
         );
@@ -38,14 +38,14 @@ const UserProfileScreen = () => {
         const data = await response.json();
         setUser(data);
 
-        // 2. Récupérer l'utilisateur connecté
+        // Récupérer l'utilisateur connecté
         const userString = await AsyncStorage.getItem('user');
         const currentUser = userString ? JSON.parse(userString) : null;
         const currentUserId = currentUser
           ? currentUser.id || currentUser._id
           : null;
         if (currentUserId) {
-          // 3. Vérifier si le profil consulté est déjà ami
+          // Vérifier si le profil consulté est déjà ami
           const friendsResponse = await fetch(
             `${apiConfig.baseURL}/api/friends/${currentUserId}`
           );
@@ -56,7 +56,7 @@ const UserProfileScreen = () => {
             );
             setIsFriend(friendIds.includes(String(friendId)));
           }
-          // 4. Si non ami, vérifier s'il existe une invitation pending
+          // Si non ami, vérifier s'il existe une invitation pending
           if (!isFriend) {
             const pendingResponse = await fetch(
               `${apiConfig.baseURL}/api/invitations?senderId=${currentUserId}&receiverId=${friendId}&status=pending`
@@ -80,7 +80,6 @@ const UserProfileScreen = () => {
   }, [friendId, isFriend]);
 
   const handleAction = () => {
-    // Si déjà ami, déclenche la suppression
     if (isFriend) {
       Alert.alert(
         "Supprimer l'ami",
@@ -126,7 +125,6 @@ const UserProfileScreen = () => {
         ]
       );
     } else {
-      // Si non ami et aucune invitation pending, on envoie une invitation
       if (!invitationPending) {
         (async () => {
           try {
@@ -214,22 +212,13 @@ const UserProfileScreen = () => {
         <Text style={styles.username}>{user.username}</Text>
       </View>
 
-      {/* Boutons d'action */}
       {isFriend ? (
-        <View style={styles.friendButtonsContainer}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.messageButton]}
-            onPress={() => Alert.alert('Message', 'Fonctionnalité à venir.')}
-          >
-            <Text style={styles.actionButtonText}>Message</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.deleteButton]}
-            onPress={handleAction}
-          >
-            <Text style={styles.actionButtonText}>Supprimer</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          style={[styles.actionButton, styles.deleteButton]}
+          onPress={handleAction}
+        >
+          <Text style={styles.actionButtonText}>Supprimer l'ami</Text>
+        </TouchableOpacity>
       ) : invitationPending ? (
         <View style={[styles.actionButton, styles.pendingButton]}>
           <Text style={[styles.actionButtonText, styles.pendingText]}>
@@ -368,10 +357,6 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     backgroundColor: Colors.error,
-    paddingHorizontal: 40,
-  },
-  messageButton: {
-    backgroundColor: Colors.accent,
     paddingHorizontal: 40,
   },
   actionButtonText: {
