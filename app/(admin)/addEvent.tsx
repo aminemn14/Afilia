@@ -43,13 +43,19 @@ export default function CreateEventScreen() {
   });
 
   // États pour les dates et heures (en tant que Date)
-  const [startDate] = useState(new Date());
-  const [endDate] = useState(new Date());
-  const [startTime] = useState(new Date());
-  const [endTime] = useState(new Date());
+  const [startDate, setStartDate] = useState(new Date());
+  const [endDate, setEndDate] = useState(new Date());
+  const [startTime, setStartTime] = useState(new Date());
+  const [endTime, setEndTime] = useState(new Date());
 
-  // Fonction de formatage des dates
+  // Fonction de formatage des heures
   const formatTime = (date: Date) => date.toTimeString().slice(0, 5);
+
+  // Fonction pour obtenir une date ISO en heure locale
+  const toLocalISOString = (date: Date) => {
+    const tzoffset = date.getTimezoneOffset() * 60000; // décalage en ms
+    return new Date(date.getTime() - tzoffset).toISOString().slice(0, 19);
+  };
 
   // Récupération des lieux enregistrés
   useEffect(() => {
@@ -105,8 +111,8 @@ export default function CreateEventScreen() {
         tel: formData.tel,
         email: formData.email,
         description: formData.description,
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
+        start_date: toLocalISOString(startDate),
+        end_date: toLocalISOString(endDate),
         start_time: formatTime(startTime),
         end_time: formatTime(endTime),
       };
@@ -380,17 +386,10 @@ export default function CreateEventScreen() {
               display="default"
               locale="fr-FR"
               themeVariant="light"
-            />
-          </TouchableOpacity>
-        </View>
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Heure de début</Text>
-          <TouchableOpacity style={styles.hourButton}>
-            <DateTimePicker
-              value={startTime}
-              mode="time"
-              display="default"
-              themeVariant="light"
+              onChange={(event, selectedDate) => {
+                const currentDate = selectedDate || startDate;
+                setStartDate(currentDate);
+              }}
             />
           </TouchableOpacity>
         </View>
@@ -403,6 +402,25 @@ export default function CreateEventScreen() {
               display="default"
               locale="fr-FR"
               themeVariant="light"
+              onChange={(event, selectedDate) => {
+                const currentDate = selectedDate || endDate;
+                setEndDate(currentDate);
+              }}
+            />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Heure de début</Text>
+          <TouchableOpacity style={styles.hourButton}>
+            <DateTimePicker
+              value={startTime}
+              mode="time"
+              display="default"
+              themeVariant="light"
+              onChange={(event, selectedDate) => {
+                const currentDate = selectedDate || startTime;
+                setStartTime(currentDate);
+              }}
             />
           </TouchableOpacity>
         </View>
@@ -414,6 +432,10 @@ export default function CreateEventScreen() {
               mode="time"
               display="default"
               themeVariant="light"
+              onChange={(event, selectedDate) => {
+                const currentDate = selectedDate || endTime;
+                setEndTime(currentDate);
+              }}
             />
           </TouchableOpacity>
         </View>
@@ -508,7 +530,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.gray200,
   },
-
   pickerIOS: {
     fontSize: 16,
     paddingVertical: 12,
@@ -556,7 +577,6 @@ const styles = StyleSheet.create({
   locationContainer: {
     marginBottom: 20,
   },
-
   imageContainer: {
     alignItems: 'center',
     justifyContent: 'center',
