@@ -6,17 +6,20 @@ import {
   Image,
   TouchableOpacity,
   Alert,
-  Switch,
+  ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import Colors from '../constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
+import apiConfig from '@/config/apiConfig';
+import useSocket from '../hooks/useSocket';
 
 export default function ProfileScreen() {
   const [user, setUser] = useState<any>(null);
+  const [invitationCount, setInvitationCount] = useState(0);
   const router = useRouter();
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const socketRef = useSocket();
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -25,6 +28,20 @@ export default function ProfileScreen() {
         if (userString) {
           const userObj = JSON.parse(userString);
           setUser(userObj);
+          const userId = userObj.id || userObj._id;
+          // Récupérer le nombre d'invitations en attente (pending) pour ce compte (receiver)
+          const response = await fetch(
+            `${apiConfig.baseURL}/api/invitations?receiverId=${userId}&status=pending`
+          );
+          if (response.ok) {
+            const data = await response.json();
+            // On suppose que data est un tableau d'invitations
+            setInvitationCount(Array.isArray(data) ? data.length : 0);
+          }
+          // Rejoindre la salle dédiée à l'utilisateur pour recevoir des mises à jour
+          if (socketRef.current) {
+            socketRef.current.emit('joinRoom', userId);
+          }
         }
       } catch (error) {
         console.error(
@@ -34,7 +51,30 @@ export default function ProfileScreen() {
       }
     };
     fetchUser();
-  }, []);
+  }, [socketRef]);
+
+  // Écouter les événements Socket.IO pour actualiser le compteur en direct
+  useEffect(() => {
+    if (!socketRef.current) return;
+
+    const handleInvitationReceived = (invitation: any) => {
+      // Incrémente le compteur
+      setInvitationCount((prev) => prev + 1);
+    };
+
+    const handleInvitationUpdated = (invitation: any) => {
+      // Si une invitation a été traitée, décrémente le compteur (on peut ajuster la logique selon vos besoins)
+      setInvitationCount((prev) => (prev > 0 ? prev - 1 : 0));
+    };
+
+    socketRef.current.on('invitationReceived', handleInvitationReceived);
+    socketRef.current.on('invitationUpdated', handleInvitationUpdated);
+
+    return () => {
+      socketRef.current?.off('invitationReceived', handleInvitationReceived);
+      socketRef.current?.off('invitationUpdated', handleInvitationUpdated);
+    };
+  }, [socketRef]);
 
   const handleLogout = async () => {
     try {
@@ -56,6 +96,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.headerButton}
@@ -99,15 +140,20 @@ export default function ProfileScreen() {
           <Text style={styles.infoValue}>{user.bio || 'Aucune bio'}</Text>
         </View>
       </View>
-      <View style={styles.infoContainer}>
-        <View style={styles.toggleContainer}>
-          <Text style={styles.toggleLabel}>Notifications</Text>
-          <Switch
-            value={notificationsEnabled}
-            onValueChange={setNotificationsEnabled}
-          />
+
+      <TouchableOpacity
+        onPress={() => router.push('/(settingsProfile)/invitations')}
+      >
+        <View style={styles.infoContainer}>
+          <View style={styles.invitationContainer}>
+            {invitationCount > 0 && <View style={styles.dot} />}
+            <Text style={styles.invitationLabel}>
+              Invitations en ami ({invitationCount})
+            </Text>
+            <Ionicons name="chevron-forward" size={24} color={Colors.primary} />
+          </View>
         </View>
-      </View>
+      </TouchableOpacity>
 
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
         <Text style={styles.logoutButtonText}>Déconnexion</Text>
@@ -142,11 +188,6 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  headerButtonIcon: {
-    width: 24,
-    height: 24,
-    tintColor: Colors.primary,
   },
   profileInfoContainer: {
     alignItems: 'center',
@@ -199,14 +240,21 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: Colors.text,
   },
-  toggleContainer: {
+  invitationContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  toggleLabel: {
+  invitationLabel: {
     fontSize: 16,
     color: Colors.text,
+  },
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Colors.primary,
+    marginRight: 8,
   },
   logoutButton: {
     backgroundColor: Colors.error,

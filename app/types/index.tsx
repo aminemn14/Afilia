@@ -1,7 +1,7 @@
 type EventType = 'théâtre' | 'concert' | 'chorale' | 'exposition' | 'museum';
 
 export interface User {
-  id: string;
+  _id: string;
   firstname: string;
   lastname: string;
   email: string;
@@ -67,6 +67,36 @@ export interface Message {
   content: string;
   created_at: string;
   read: boolean;
+}
+
+export interface Friend {
+  id: string;
+  name: string;
+  username: string;
+  avatar: string;
+  isFriend: boolean;
+  invitationPending?: boolean;
+  invitationReceived?: boolean;
+  invitationReceivedId?: string | null;
+}
+
+export interface FriendItemProps {
+  item: Friend;
+  index: number;
+  isFriend: boolean;
+  onInviteSent?: (friendId: string) => void;
+  onAcceptReceived?: (
+    friend: Friend,
+    invitationReceivedId: string | null
+  ) => void;
+}
+
+export interface Invitation {
+  _id: string;
+  senderId: User;
+  receiverId: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  createdAt: string;
 }
 
 const TypesPage = () => {

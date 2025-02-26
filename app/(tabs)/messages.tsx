@@ -11,6 +11,7 @@ import { MotiView } from 'moti';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../constants/Colors';
 import type { Message } from '@/app/types';
+import { router } from 'expo-router';
 
 const MOCK_MESSAGES: (Message & { user: { name: string; avatar: string } })[] =
   [
@@ -101,8 +102,11 @@ export default function MessagesScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Messages</Text>
-        <TouchableOpacity style={styles.newMessageButton}>
-          <Ionicons name="create-outline" size={24} color={Colors.white} />
+        <TouchableOpacity
+          style={styles.friendListButton}
+          onPress={() => router.push('/(friends)')}
+        >
+          <Ionicons name="people-outline" size={24} color={Colors.white} />
         </TouchableOpacity>
       </View>
 
@@ -153,11 +157,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: Colors.text,
   },
-  newMessageButton: {
+  friendListButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: Colors.primaryLight,
+    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
