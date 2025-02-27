@@ -1,6 +1,24 @@
-// controllers/conversationController.js
 const Friend = require('../models/Friend');
 const Message = require('../models/Message');
+const crypto = require('crypto');
+const algorithm = 'aes-256-cbc';
+require('dotenv').config();
+
+const MESSAGE_SECRET = process.env.MESSAGE_SECRET;
+
+function decryptMessage(text) {
+  const textParts = text.split(':');
+  const iv = Buffer.from(textParts.shift(), 'hex');
+  const encryptedText = textParts.join(':');
+  const decipher = crypto.createDecipheriv(
+    algorithm,
+    Buffer.from(MESSAGE_SECRET, 'hex'),
+    iv
+  );
+  let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+  return decrypted;
+}
 
 exports.getConversations = async (req, res) => {
   try {
@@ -23,6 +41,21 @@ exports.getConversations = async (req, res) => {
         const lastMessageDoc = await Message.findOne({
           conversation_id: conversationId,
         }).sort({ created_at: -1 });
+
+        let lastMessage = 'Démarrer une conversation!';
+        if (lastMessageDoc && lastMessageDoc.content) {
+          // Déchiffrer le contenu du dernier message
+          try {
+            lastMessage = decryptMessage(lastMessageDoc.content);
+          } catch (err) {
+            console.error(
+              'Erreur lors du déchiffrement du dernier message:',
+              err
+            );
+            lastMessage = 'Message illisible';
+          }
+        }
+
         return {
           id: conversationId,
           friend: {
@@ -30,9 +63,7 @@ exports.getConversations = async (req, res) => {
             name: `${friendUser.firstname} ${friendUser.lastname}`,
             avatar: friendUser.avatar,
           },
-          lastMessage: lastMessageDoc
-            ? lastMessageDoc.content
-            : 'Démarrer une conversation!',
+          lastMessage,
           updatedAt: lastMessageDoc
             ? lastMessageDoc.created_at
             : friendItem.createdAt,

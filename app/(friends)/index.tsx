@@ -10,7 +10,6 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
 import Colors from '../constants/Colors';
 import { router } from 'expo-router';
 import apiConfig from '@/config/apiConfig';
@@ -25,7 +24,7 @@ export default function FriendsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState<Error | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const navigation = useNavigation();
+
   const socketRef = useSocket();
 
   // Chargement initial des données
@@ -317,7 +316,7 @@ export default function FriendsScreen() {
         <View style={styles.headerTopRow}>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => navigation.goBack()}
+            onPress={() => router.back()}
           >
             <Ionicons name="chevron-back" size={24} color={Colors.text} />
           </TouchableOpacity>
