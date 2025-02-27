@@ -65,7 +65,6 @@ function getIconForEventType(
   }
 }
 
-// ... (le reste de votre code MapScreen reste inchangé)
 export default function MapScreen() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
@@ -182,7 +181,6 @@ export default function MapScreen() {
         })}
       </MapView>
 
-      {/* Bloc de filtres dans une div blanche avec borderRadius de 100 */}
       <View style={styles.filterContainer}>
         <FlatList
           horizontal
