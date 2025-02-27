@@ -7,6 +7,7 @@ import {
   Dimensions,
   ActivityIndicator,
   Alert,
+  FlatList,
 } from 'react-native';
 import MapView, { Marker, Callout } from 'react-native-maps';
 import { MotiView } from 'moti';
@@ -26,16 +27,23 @@ import Colors from '../constants/Colors';
 import apiConfig from '@/config/apiConfig';
 import { Location, Event } from '../types';
 
+const EVENT_TYPES = [
+  'Tous',
+  'Concert',
+  'Théâtre',
+  'Exposition',
+  'Musée',
+  'Chorale',
+];
+
 function getIconForEventType(
   eventTypes: string[],
   size: number,
   color: string
 ): JSX.Element {
-  // Si le tableau est vide ou si le lieu a plusieurs types => icône par défaut
   if (!eventTypes || eventTypes.length !== 1) {
     return <MapPinIcon size={size} color={color} strokeWidth={1.8} />;
   }
-
   const type = eventTypes[0].toLowerCase();
   switch (type) {
     case 'chorale':
@@ -57,16 +65,17 @@ function getIconForEventType(
   }
 }
 
+// ... (le reste de votre code MapScreen reste inchangé)
 export default function MapScreen() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
-
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(
     null
   );
+  const [selectedType, setSelectedType] = useState('Tous');
 
-  // Récupération des lieux
+  // Récupération des lieux et des événements
   useEffect(() => {
     const fetchLocations = async () => {
       try {
@@ -80,7 +89,6 @@ export default function MapScreen() {
       }
     };
 
-    // Récupération des événements
     const fetchEvents = async () => {
       try {
         const response = await axios.get<Event[]>(
@@ -98,17 +106,27 @@ export default function MapScreen() {
     });
   }, []);
 
-  // Pour récupérer les événements liés à un lieu donné
+  // Récupérer les événements d'un lieu
   const getEventsAtLocation = (locationId: string) => {
     return events.filter((event) => event.location_id === locationId);
   };
 
+  // Filtrer les lieux en fonction du type sélectionné
+  const filteredLocations = locations.filter((location) => {
+    const eventsAtLocation = getEventsAtLocation(
+      location._id || location.id || ''
+    );
+    if (selectedType === 'Tous') return true;
+    return eventsAtLocation.some(
+      (event) => event.event_type.toLowerCase() === selectedType.toLowerCase()
+    );
+  });
+
+  // Récupérer les types d'événement d'un lieu
   const getEventTypesForLocation = (locationId: string) => {
-    const types = events
+    return events
       .filter((event) => event.location_id === locationId)
       .map((e) => e.event_type.toLowerCase());
-
-    return types;
   };
 
   if (loading) {
@@ -130,10 +148,9 @@ export default function MapScreen() {
           longitudeDelta: 0.0421,
         }}
       >
-        {locations.map((location) => {
+        {filteredLocations.map((location) => {
           const locationId = location._id || location.id;
           if (!locationId) return null;
-
           const eventTypes = getEventTypesForLocation(locationId);
 
           return (
@@ -165,6 +182,35 @@ export default function MapScreen() {
         })}
       </MapView>
 
+      {/* Bloc de filtres dans une div blanche avec borderRadius de 100 */}
+      <View style={styles.filterContainer}>
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={EVENT_TYPES}
+          keyExtractor={(item) => item}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={[
+                styles.filterButton,
+                selectedType === item && styles.filterButtonActive,
+              ]}
+              onPress={() => setSelectedType(item)}
+            >
+              <Text
+                style={[
+                  styles.filterButtonText,
+                  selectedType === item && styles.filterButtonTextActive,
+                ]}
+              >
+                {item}
+              </Text>
+            </TouchableOpacity>
+          )}
+          contentContainerStyle={styles.filterList}
+        />
+      </View>
+
       {selectedLocation && (
         <MotiView
           style={styles.locationDetails}
@@ -183,12 +229,10 @@ export default function MapScreen() {
               <Ionicons name="close" size={24} color={Colors.gray600} />
             </TouchableOpacity>
           </View>
-
           <Text style={styles.locationAddress}>{selectedLocation.address}</Text>
           <Text style={styles.locationCity}>
             {selectedLocation.city} - {selectedLocation.zipcode}
           </Text>
-
           <View style={styles.eventsContainer}>
             {getEventsAtLocation(
               selectedLocation._id || selectedLocation.id || ''
@@ -272,15 +316,52 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.gray600,
   },
+  filterContainer: {
+    position: 'absolute',
+    top: 70,
+    left: 20,
+    right: 20,
+    backgroundColor: Colors.white,
+    borderRadius: 100,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    elevation: 5,
+    shadowColor: Colors.text,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  filterList: {
+    paddingHorizontal: 0,
+  },
+  filterButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: Colors.gray200,
+    marginRight: 8,
+  },
+  filterButtonActive: {
+    backgroundColor: Colors.secondary,
+  },
+  filterButtonText: {
+    fontSize: 14,
+    color: Colors.gray900,
+  },
+  filterButtonTextActive: {
+    color: Colors.text,
+    fontWeight: '600',
+  },
   locationDetails: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
     backgroundColor: Colors.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderRadius: 20,
     padding: 20,
+    marginHorizontal: 20,
+    marginBottom: 120,
     shadowColor: Colors.text,
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
