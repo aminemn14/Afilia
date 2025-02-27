@@ -1,4 +1,10 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useMemo,
+  useCallback,
+} from 'react';
 import {
   Dimensions,
   SafeAreaView,
@@ -16,6 +22,7 @@ import {
   Alert,
 } from 'react-native';
 import Colors from '../constants/Colors';
+import cardBackgrounds from '../constants/CardBackgrounds';
 
 export default function PaymentScreen(): JSX.Element {
   const windowWidth = Dimensions.get('window').width;
@@ -30,6 +37,13 @@ export default function PaymentScreen(): JSX.Element {
   const [cardCvv, setCardCvv] = useState('');
   const [isCardFlipped, setIsCardFlipped] = useState(false);
 
+  // Animated values pour chaque input
+  const cardNumberAnim = useRef(new Animated.Value(0)).current;
+  const cardNameAnim = useRef(new Animated.Value(0)).current;
+  const cardMonthAnim = useRef(new Animated.Value(0)).current;
+  const cardYearAnim = useRef(new Animated.Value(0)).current;
+  const cardCvvAnim = useRef(new Animated.Value(0)).current;
+
   // Animation pour le flip de la carte
   const flipAnim = useRef(new Animated.Value(0)).current;
   const flipCard = (status: boolean) => {
@@ -41,9 +55,28 @@ export default function PaymentScreen(): JSX.Element {
     }).start();
   };
 
-  const minCardYear = new Date().getFullYear();
+  const animateFocus = (anim: Animated.Value, toValue: number) => {
+    Animated.timing(anim, {
+      toValue,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  };
 
-  const cardNumberMask = '#### #### #### ####';
+  // Interpolations pour chaque champ
+  const getBorderColor = (anim: Animated.Value) =>
+    anim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [Colors.gray300, Colors.accent],
+    });
+
+  const getShadowOpacity = (anim: Animated.Value) =>
+    anim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, 0.8],
+    });
+
+  const minCardYear = new Date().getFullYear();
 
   const minCardMonth = useMemo(() => {
     if (parseInt(cardYear) === minCardYear % 100) {
@@ -69,40 +102,36 @@ export default function PaymentScreen(): JSX.Element {
 
   // Affichage du numéro de carte sur la carte
   const renderCardNumber = () => {
-    // On s'assure d'avoir une longueur de 16 caractères
-    const paddedNumber = cardNumber.padEnd(16, '•');
-
-    // On masque les 8 chiffres du milieu
+    // Supprime les espaces pour obtenir exactement les chiffres saisis
+    const cleanedNumber = cardNumber.replace(/\s/g, '');
+    const paddedNumber = cleanedNumber.padEnd(16, '•');
     let masked = '';
     for (let i = 0; i < 16; i++) {
       if (i < 4) {
+        // Les 4 premiers chiffres s'affichent normalement
         masked += paddedNumber[i];
       } else if (i >= 4 && i < 12) {
+        // Les chiffres du milieu sont masqués
         masked += paddedNumber[i] === '•' ? '•' : '*';
       } else {
+        // Les 4 derniers chiffres s'affichent normalement
         masked += paddedNumber[i];
       }
-      // On insère un espace toutes les 4 positions
+      // Insère un espace toutes les 4 positions, sauf après le dernier groupe
       if ((i + 1) % 4 === 0 && i < 15) {
         masked += ' ';
       }
     }
-
     return masked;
   };
 
-  // Formatage du numéro de carte dans l'input (espaces tous les 4 chiffres)
-  const formatCardNumberInput = (number: string): string => {
-    const cleaned = number.replace(/\s/g, '');
-    return cleaned.replace(/(.{4})/g, '$1 ').trim();
-  };
-
-  // Gestion de la saisie du numéro de carte : suppression des espaces et limitation à 16 chiffres
+  // Formatage du numéro de carte dans l'input
   const handleCardNumberChange = (text: string) => {
     const cleaned = text.replace(/\s/g, '');
     const maxLength = 16;
-    if (cleaned.length <= maxLength) {
-      setCardNumber(cleaned);
+    if (/^\d*$/.test(cleaned) && cleaned.length <= maxLength) {
+      const formatted = cleaned.replace(/(.{4})/g, '$1 ').trim();
+      setCardNumber(formatted);
     }
   };
 
@@ -135,36 +164,8 @@ export default function PaymentScreen(): JSX.Element {
     };
   }, [keyboardOffset]);
 
-  const cardBackgrounds: { [key: number]: any } = {
-    1: require('@/assets/images/card-background/1.jpeg'),
-    2: require('@/assets/images/card-background/2.jpeg'),
-    3: require('@/assets/images/card-background/3.jpeg'),
-    4: require('@/assets/images/card-background/4.jpeg'),
-    5: require('@/assets/images/card-background/5.jpeg'),
-    6: require('@/assets/images/card-background/6.jpeg'),
-    7: require('@/assets/images/card-background/7.jpeg'),
-    8: require('@/assets/images/card-background/8.jpeg'),
-    9: require('@/assets/images/card-background/9.jpeg'),
-    10: require('@/assets/images/card-background/10.jpeg'),
-    11: require('@/assets/images/card-background/11.jpeg'),
-    12: require('@/assets/images/card-background/12.jpeg'),
-    13: require('@/assets/images/card-background/13.jpeg'),
-    14: require('@/assets/images/card-background/14.jpeg'),
-    15: require('@/assets/images/card-background/15.jpeg'),
-    16: require('@/assets/images/card-background/16.jpeg'),
-    17: require('@/assets/images/card-background/17.jpeg'),
-    18: require('@/assets/images/card-background/18.jpeg'),
-    19: require('@/assets/images/card-background/19.jpeg'),
-    20: require('@/assets/images/card-background/20.jpeg'),
-    21: require('@/assets/images/card-background/21.jpeg'),
-    22: require('@/assets/images/card-background/22.jpeg'),
-    23: require('@/assets/images/card-background/23.jpeg'),
-    24: require('@/assets/images/card-background/24.jpeg'),
-    25: require('@/assets/images/card-background/25.jpeg'),
-  };
-
   // Fonction de validation du formulaire
-  const handleValidation = () => {
+  const handleValidation = useCallback(() => {
     if (!cardName || !cardNumber || !cardMonth || !cardYear || !cardCvv) {
       Alert.alert('Erreur', 'Veuillez remplir tous les champs');
       return;
@@ -192,7 +193,7 @@ export default function PaymentScreen(): JSX.Element {
       Alert.alert('Erreur', "Le mois d'expiration est invalide");
       return;
     }
-    if (cardNumber.length !== 16) {
+    if (cardNumber.replace(/\s/g, '').length !== 16) {
       Alert.alert('Erreur', 'Le numéro de carte doit contenir 16 chiffres');
       return;
     }
@@ -201,7 +202,7 @@ export default function PaymentScreen(): JSX.Element {
       return;
     }
     Alert.alert('Succès', 'Paiement effectué');
-  };
+  }, [cardName, cardNumber, cardMonth, cardYear, cardCvv]);
 
   return (
     <KeyboardAvoidingView
@@ -309,73 +310,149 @@ export default function PaymentScreen(): JSX.Element {
           </View>
 
           <View style={styles.form}>
+            {/* Numéro de carte */}
             <Text style={styles.inputLabel}>Numéro de carte</Text>
-            <TextInput
-              style={styles.input}
-              keyboardType="numeric"
-              value={formatCardNumberInput(cardNumber)}
-              onChangeText={handleCardNumberChange}
-              placeholder="Numéro de carte"
-              placeholderTextColor={Colors.gray600}
-              autoComplete="cc-number"
-            />
+            <Animated.View
+              style={[
+                styles.inputContainer,
+                {
+                  borderColor: getBorderColor(cardNumberAnim),
+                  shadowColor: Colors.accent,
+                  shadowOpacity: getShadowOpacity(cardNumberAnim),
+                },
+              ]}
+            >
+              <TextInput
+                style={styles.input}
+                keyboardType="numeric"
+                value={cardNumber}
+                onChangeText={handleCardNumberChange}
+                onFocus={() => animateFocus(cardNumberAnim, 1)}
+                onBlur={() => animateFocus(cardNumberAnim, 0)}
+                placeholder="Numéro de carte"
+                placeholderTextColor={Colors.gray600}
+                autoComplete="cc-number"
+                accessible={true}
+                accessibilityLabel="Numéro de carte de crédit"
+              />
+            </Animated.View>
 
+            {/* Titulaire */}
             <Text style={styles.inputLabel}>Titulaire</Text>
-            <TextInput
-              style={styles.input}
-              value={cardName}
-              onChangeText={(text) => {
-                const capitalizedText = text
-                  .toLowerCase()
-                  .split(' ')
-                  .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-                  .join(' ');
-                setCardName(capitalizedText);
-              }}
-              placeholder="Nom complet"
-              placeholderTextColor={Colors.gray600}
-              autoComplete="name"
-              maxLength={30}
-            />
+            <Animated.View
+              style={[
+                styles.inputContainer,
+                {
+                  borderColor: getBorderColor(cardNameAnim),
+                  shadowColor: Colors.accent,
+                  shadowOpacity: getShadowOpacity(cardNameAnim),
+                },
+              ]}
+            >
+              <TextInput
+                style={styles.input}
+                value={cardName}
+                onChangeText={(text) => {
+                  const capitalizedText = text
+                    .toLowerCase()
+                    .split(' ')
+                    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ');
+                  setCardName(capitalizedText);
+                }}
+                onFocus={() => animateFocus(cardNameAnim, 1)}
+                onBlur={() => animateFocus(cardNameAnim, 0)}
+                placeholder="Nom complet"
+                placeholderTextColor={Colors.gray600}
+                autoComplete="name"
+                maxLength={30}
+              />
+            </Animated.View>
 
             <View style={styles.row}>
+              {/* Mois */}
               <View style={[styles.column, { flex: 2 }]}>
                 <Text style={styles.inputLabel}>Mois</Text>
-                <TextInput
-                  style={styles.input}
-                  value={cardMonth}
-                  onChangeText={setCardMonth}
-                  placeholder="MM"
-                  keyboardType="numeric"
-                  placeholderTextColor={Colors.gray600}
-                  maxLength={2}
-                />
+                <Animated.View
+                  style={[
+                    styles.inputContainer,
+                    {
+                      borderColor: getBorderColor(cardMonthAnim),
+                      shadowColor: Colors.accent,
+                      shadowOpacity: getShadowOpacity(cardMonthAnim),
+                    },
+                  ]}
+                >
+                  <TextInput
+                    style={styles.input}
+                    value={cardMonth}
+                    onChangeText={setCardMonth}
+                    onFocus={() => animateFocus(cardMonthAnim, 1)}
+                    onBlur={() => animateFocus(cardMonthAnim, 0)}
+                    placeholder="MM"
+                    keyboardType="numeric"
+                    placeholderTextColor={Colors.gray600}
+                    maxLength={2}
+                  />
+                </Animated.View>
               </View>
+              {/* Année */}
               <View style={[styles.column, { flex: 2 }]}>
                 <Text style={styles.inputLabel}>Année</Text>
-                <TextInput
-                  style={styles.input}
-                  value={cardYear}
-                  onChangeText={setCardYear}
-                  placeholder="AA"
-                  keyboardType="numeric"
-                  placeholderTextColor={Colors.gray600}
-                  maxLength={2}
-                />
+                <Animated.View
+                  style={[
+                    styles.inputContainer,
+                    {
+                      borderColor: getBorderColor(cardYearAnim),
+                      shadowColor: Colors.accent,
+                      shadowOpacity: getShadowOpacity(cardYearAnim),
+                    },
+                  ]}
+                >
+                  <TextInput
+                    style={styles.input}
+                    value={cardYear}
+                    onChangeText={setCardYear}
+                    onFocus={() => animateFocus(cardYearAnim, 1)}
+                    onBlur={() => animateFocus(cardYearAnim, 0)}
+                    placeholder="AA"
+                    keyboardType="numeric"
+                    placeholderTextColor={Colors.gray600}
+                    maxLength={2}
+                  />
+                </Animated.View>
               </View>
+              {/* CVV */}
               <View style={[styles.column, { flex: 1 }]}>
                 <Text style={styles.inputLabel}>CVV</Text>
-                <TextInput
-                  style={styles.input}
-                  value={cardCvv}
-                  onChangeText={setCardCvv}
-                  placeholder="CVV"
-                  keyboardType="numeric"
-                  placeholderTextColor={Colors.gray600}
-                  maxLength={3}
-                  onFocus={() => flipCard(true)}
-                  onBlur={() => flipCard(false)}
-                />
+                <Animated.View
+                  style={[
+                    styles.inputContainer,
+                    {
+                      borderColor: getBorderColor(cardCvvAnim),
+                      shadowColor: Colors.accent,
+                      shadowOpacity: getShadowOpacity(cardCvvAnim),
+                    },
+                  ]}
+                >
+                  <TextInput
+                    style={styles.input}
+                    value={cardCvv}
+                    onChangeText={setCardCvv}
+                    onFocus={() => {
+                      animateFocus(cardCvvAnim, 1);
+                      flipCard(true);
+                    }}
+                    onBlur={() => {
+                      animateFocus(cardCvvAnim, 0);
+                      flipCard(false);
+                    }}
+                    placeholder="CVV"
+                    keyboardType="numeric"
+                    placeholderTextColor={Colors.gray600}
+                    maxLength={3}
+                  />
+                </Animated.View>
               </View>
             </View>
 
@@ -521,13 +598,18 @@ const styles = StyleSheet.create({
     color: Colors.gray500,
     marginBottom: 5,
   },
-  input: {
-    height: 50,
-    borderColor: Colors.gray300,
+  inputContainer: {
     borderWidth: 1,
     borderRadius: 5,
-    paddingHorizontal: 15,
     marginBottom: 20,
+    // Valeurs par défaut pour l'état "non focus"
+    borderColor: Colors.gray300,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+  },
+  input: {
+    height: 50,
+    paddingHorizontal: 15,
     fontSize: 18,
     color: Colors.text,
   },
