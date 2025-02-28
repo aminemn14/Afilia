@@ -6,13 +6,13 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  ActivityIndicator,
   Alert,
   ImageBackground,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import LoadingContainer from '../../components/LoadingContainer';
 
 import Colors from '@/app/constants/Colors';
 import apiConfig from '@/config/apiConfig';
@@ -68,9 +68,7 @@ export default function EventDetailScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.mainContainer}>
-        <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-        </View>
+        <LoadingContainer />
       </SafeAreaView>
     );
   }

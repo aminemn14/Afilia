@@ -6,7 +6,6 @@ import {
   Image,
   TouchableOpacity,
   Alert,
-  ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -14,6 +13,7 @@ import Colors from '../constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import apiConfig from '@/config/apiConfig';
 import useSocket from '../hooks/useSocket';
+import LoadingContainer from '../components/LoadingContainer';
 
 export default function ProfileScreen() {
   const [user, setUser] = useState<any>(null);
@@ -88,7 +88,7 @@ export default function ProfileScreen() {
   if (!user) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <LoadingContainer />
       </View>
     );
   }

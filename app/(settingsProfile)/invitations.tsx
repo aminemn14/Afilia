@@ -2,7 +2,6 @@ import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
-  ActivityIndicator,
   StyleSheet,
   FlatList,
   TouchableOpacity,
@@ -14,6 +13,7 @@ import Colors from '../constants/Colors';
 import apiConfig from '@/config/apiConfig';
 import { router, useFocusEffect } from 'expo-router';
 import { Invitation } from '../types';
+import LoadingContainer from '../components/LoadingContainer';
 
 export default function InvitationsScreen() {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
@@ -153,7 +153,7 @@ export default function InvitationsScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <LoadingContainer />
       </View>
     );
   }

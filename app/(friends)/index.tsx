@@ -6,7 +6,6 @@ import {
   SectionList,
   TouchableOpacity,
   TextInput,
-  ActivityIndicator,
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Friend } from '../types';
 import FriendItem from '../components/FriendItem';
 import useSocket from '../hooks/useSocket';
+import LoadingContainer from '../components/LoadingContainer';
 
 export default function FriendsScreen() {
   const [allUsers, setAllUsers] = useState<Friend[]>([]);
@@ -299,7 +299,7 @@ export default function FriendsScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <LoadingContainer />
       </View>
     );
   }

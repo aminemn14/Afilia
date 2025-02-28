@@ -6,7 +6,6 @@ import {
   FlatList,
   TouchableOpacity,
   Image,
-  ActivityIndicator,
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +15,7 @@ import apiConfig from '@/config/apiConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import useSocket from '../hooks/useSocket';
 import { Conversation } from '../types';
+import LoadingContainer from '../components/LoadingContainer';
 
 export default function MessagesScreen() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -254,7 +254,7 @@ export default function MessagesScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <LoadingContainer />
       </View>
     );
   }

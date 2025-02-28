@@ -6,7 +6,6 @@ import {
   Image,
   TouchableOpacity,
   Alert,
-  ActivityIndicator,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import Colors from '../../constants/Colors';
@@ -14,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import apiConfig from '@/config/apiConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
+import LoadingContainer from '../../components/LoadingContainer';
 
 const UserProfileScreen = () => {
   const route = useRoute();
@@ -166,11 +166,7 @@ const UserProfileScreen = () => {
   };
 
   if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-      </View>
-    );
+    return <LoadingContainer />;
   }
 
   if (!user) {

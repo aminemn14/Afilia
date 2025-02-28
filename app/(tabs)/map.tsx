@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   Dimensions,
-  ActivityIndicator,
   Alert,
   FlatList,
 } from 'react-native';
@@ -26,6 +25,8 @@ import axios from 'axios';
 import Colors from '../constants/Colors';
 import apiConfig from '@/config/apiConfig';
 import { Location, Event } from '../types';
+
+import LoadingContainer from '../components/LoadingContainer';
 
 const EVENT_TYPES = [
   'Tous',
@@ -131,7 +132,7 @@ export default function MapScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <LoadingContainer />
       </View>
     );
   }

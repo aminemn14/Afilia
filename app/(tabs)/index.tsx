@@ -6,7 +6,6 @@ import {
   FlatList,
   TouchableOpacity,
   TextInput,
-  ActivityIndicator,
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +16,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiConfig from '@/config/apiConfig';
 import { User } from '../types';
+import LoadingContainer from '../components/LoadingContainer';
 
 const EVENT_TYPES = [
   'Tous',
@@ -183,11 +183,7 @@ export default function HomeScreen() {
   };
 
   if (firstName === null || loadingEvents || loadingLocations) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-      </View>
-    );
+    return <LoadingContainer />;
   }
 
   return (
