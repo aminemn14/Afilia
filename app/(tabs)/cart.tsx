@@ -169,12 +169,15 @@ export default function CartScreen() {
         style={styles.card}
       >
         <View style={styles.cardHeader}>
-          <View style={styles.infoContainer}>
-            <Text style={styles.itemName}>{item.name}</Text>
-            <Text style={styles.eventDate}>{formatDate(item.start_date)}</Text>
-          </View>
-          <View style={styles.actionContainer}>
-            <Text style={styles.itemPrice}>{item.price.toFixed(0)} €</Text>
+          <Text style={styles.itemName}>{item.name}</Text>
+          <Text style={styles.itemPrice}>{item.price.toFixed(0)} €</Text>
+        </View>
+        <Text style={styles.eventDate}>{formatDate(item.start_date)}</Text>
+        {location && (
+          <View style={styles.addressContainer}>
+            <Text style={styles.eventLocation}>
+              {location.address}, {location.city} {location.zipcode}
+            </Text>
             <TouchableOpacity
               onPress={() => removeEvent(item.id)}
               style={styles.deleteButton}
@@ -182,11 +185,6 @@ export default function CartScreen() {
               <TrashIcon color={Colors.error} size={20} />
             </TouchableOpacity>
           </View>
-        </View>
-        {location && (
-          <Text style={styles.eventLocation}>
-            {location.address}, {location.city} {location.zipcode}
-          </Text>
         )}
       </MotiView>
     );
@@ -316,6 +314,12 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     marginTop: 4,
+  },
+  addressContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 12,
   },
   eventLocation: {
     fontSize: 14,
