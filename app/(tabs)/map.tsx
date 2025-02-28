@@ -9,7 +9,7 @@ import {
   FlatList,
 } from 'react-native';
 import MapView, { Marker, Callout } from 'react-native-maps';
-import { MotiView } from 'moti';
+import { MotiView, AnimatePresence } from 'moti';
 import { Ionicons } from '@expo/vector-icons';
 import {
   BuildingLibraryIcon,
@@ -162,9 +162,18 @@ export default function MapScreen() {
               }}
               onPress={() => setSelectedLocation(location)}
             >
-              <View style={styles.markerContainer}>
-                {getIconForEventType(eventTypes, 24, Colors.primary)}
-              </View>
+              <AnimatePresence>
+                <MotiView
+                  from={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.5 }}
+                  transition={{ duration: 300, delay: 100 }}
+                >
+                  <View style={styles.markerContainer}>
+                    {getIconForEventType(eventTypes, 24, Colors.primary)}
+                  </View>
+                </MotiView>
+              </AnimatePresence>
               <Callout>
                 <View style={styles.callout}>
                   <Text style={styles.calloutTitle}>
