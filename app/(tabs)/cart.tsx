@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { MotiView } from 'moti';
-import { TrashIcon } from 'react-native-heroicons/outline';
+import { TrashIcon, ShoppingBagIcon } from 'react-native-heroicons/outline';
 import Colors from '../constants/Colors';
 import { useRouter } from 'expo-router';
 
@@ -145,6 +145,7 @@ const MOCK_LOCATIONS = [
 export default function CartScreen() {
   const router = useRouter();
   const [events, setEvents] = useState(MOCK_EVENTS);
+  const [recapExpanded, setRecapExpanded] = useState(false);
 
   const removeEvent = (id: string) => {
     setEvents((prevEvents) => prevEvents.filter((event) => event.id !== id));
@@ -173,7 +174,7 @@ export default function CartScreen() {
             <Text style={styles.eventDate}>{formatDate(item.start_date)}</Text>
           </View>
           <View style={styles.actionContainer}>
-            <Text style={styles.itemPrice}>{item.price.toFixed(2)} €</Text>
+            <Text style={styles.itemPrice}>{item.price.toFixed(0)} €</Text>
             <TouchableOpacity
               onPress={() => removeEvent(item.id)}
               style={styles.deleteButton}
@@ -206,17 +207,50 @@ export default function CartScreen() {
         contentContainerStyle={styles.cartList}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
+            <ShoppingBagIcon
+              color={Colors.gray400}
+              size={60}
+              style={styles.emptyIcon}
+            />
             <Text style={styles.emptyText}>Votre panier est vide.</Text>
           </View>
         }
       />
       <View style={styles.footer}>
-        <Text style={styles.totalText}>Total : {totalAmount.toFixed(2)} €</Text>
+        {/* Bouton pour afficher/masquer le récapitulatif */}
+        <TouchableOpacity
+          onPress={() => setRecapExpanded(!recapExpanded)}
+          style={styles.recapToggleContainer}
+        >
+          <Text style={styles.recapToggleText}>
+            {recapExpanded
+              ? 'Masquer le récapitulatif'
+              : 'Afficher le récapitulatif'}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Récapitulatif collapsible */}
+        {recapExpanded && (
+          <View style={styles.priceRecapContainer}>
+            {events.map((item, index) => (
+              <View key={index} style={styles.priceRecapRow}>
+                <Text style={styles.priceRecapLabel}>{item.name}</Text>
+                <Text style={styles.priceRecapAmount}>
+                  {item.price.toFixed(0)} €
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+        <View style={styles.totalContainer}>
+          <Text style={styles.totalLabel}>Total</Text>
+          <Text style={styles.totalAmount}>{totalAmount.toFixed(0)} €</Text>
+        </View>
         <TouchableOpacity
           style={styles.checkoutButton}
           onPress={() => router.push('/(payment)')}
         >
-          <Text style={styles.checkoutButtonText}>Passer à la caisse</Text>
+          <Text style={styles.checkoutButtonText}>Passer au paiement</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -289,17 +323,59 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   footer: {
-    padding: 20,
+    paddingHorizontal: 20,
+
     paddingBottom: 120,
     borderTopWidth: 1,
     borderTopColor: Colors.gray100,
     backgroundColor: Colors.white,
   },
-  totalText: {
+  recapToggleContainer: {
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.gray100,
+    marginBottom: 8,
+  },
+  recapToggleText: {
+    fontSize: 16,
+    color: Colors.accent,
+    fontWeight: '500',
+  },
+  priceRecapContainer: {
+    marginBottom: 8,
+  },
+  priceRecapRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  priceRecapLabel: {
+    fontSize: 14,
+    color: Colors.gray600,
+  },
+  priceRecapAmount: {
+    fontSize: 14,
+    color: Colors.gray600,
+    textAlign: 'right',
+  },
+  totalContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    marginTop: 12,
+  },
+  totalLabel: {
     fontSize: 20,
     fontWeight: 'bold',
     color: Colors.text,
-    marginBottom: 12,
+  },
+  totalAmount: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.text,
+    textAlign: 'right',
   },
   checkoutButton: {
     backgroundColor: Colors.accent,
@@ -309,7 +385,7 @@ const styles = StyleSheet.create({
   },
   checkoutButtonText: {
     color: Colors.white,
-    fontSize: 16,
+    fontSize: 24,
     fontWeight: '600',
   },
   emptyContainer: {
@@ -317,6 +393,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 40,
+  },
+  emptyIcon: {
+    marginBottom: 16,
   },
   emptyText: {
     fontSize: 18,
