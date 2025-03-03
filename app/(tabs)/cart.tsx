@@ -214,43 +214,45 @@ export default function CartScreen() {
           </View>
         }
       />
-      <View style={styles.footer}>
-        {/* Bouton pour afficher/masquer le récapitulatif */}
-        <TouchableOpacity
-          onPress={() => setRecapExpanded(!recapExpanded)}
-          style={styles.recapToggleContainer}
-        >
-          <Text style={styles.recapToggleText}>
-            {recapExpanded
-              ? 'Masquer le récapitulatif'
-              : 'Afficher le récapitulatif'}
-          </Text>
-        </TouchableOpacity>
+      {events.length > 0 && (
+        <View style={styles.footer}>
+          {/* Bouton pour afficher/masquer le récapitulatif */}
+          <TouchableOpacity
+            onPress={() => setRecapExpanded(!recapExpanded)}
+            style={styles.recapToggleContainer}
+          >
+            <Text style={styles.recapToggleText}>
+              {recapExpanded
+                ? 'Masquer le récapitulatif'
+                : 'Afficher le récapitulatif'}
+            </Text>
+          </TouchableOpacity>
 
-        {/* Récapitulatif collapsible */}
-        {recapExpanded && (
-          <View style={styles.priceRecapContainer}>
-            {events.map((item, index) => (
-              <View key={index} style={styles.priceRecapRow}>
-                <Text style={styles.priceRecapLabel}>{item.name}</Text>
-                <Text style={styles.priceRecapAmount}>
-                  {item.price.toFixed(0)} €
-                </Text>
-              </View>
-            ))}
+          {/* Récapitulatif collapsible */}
+          {recapExpanded && (
+            <View style={styles.priceRecapContainer}>
+              {events.map((item, index) => (
+                <View key={index} style={styles.priceRecapRow}>
+                  <Text style={styles.priceRecapLabel}>{item.name}</Text>
+                  <Text style={styles.priceRecapAmount}>
+                    {item.price.toFixed(0)} €
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+          <View style={styles.totalContainer}>
+            <Text style={styles.totalLabel}>Total</Text>
+            <Text style={styles.totalAmount}>{totalAmount.toFixed(0)} €</Text>
           </View>
-        )}
-        <View style={styles.totalContainer}>
-          <Text style={styles.totalLabel}>Total</Text>
-          <Text style={styles.totalAmount}>{totalAmount.toFixed(0)} €</Text>
+          <TouchableOpacity
+            style={styles.checkoutButton}
+            onPress={() => router.push('/(payment)')}
+          >
+            <Text style={styles.checkoutButtonText}>Passer au paiement</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          style={styles.checkoutButton}
-          onPress={() => router.push('/(payment)')}
-        >
-          <Text style={styles.checkoutButtonText}>Passer au paiement</Text>
-        </TouchableOpacity>
-      </View>
+      )}
     </View>
   );
 }
@@ -397,6 +399,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 40,
+    paddingTop: 235,
   },
   emptyIcon: {
     marginBottom: 16,
