@@ -30,9 +30,7 @@ export default function MessagesScreen() {
     const dt = new Date(dateString);
     const day = dt.getDate().toString().padStart(2, '0');
     const month = (dt.getMonth() + 1).toString().padStart(2, '0');
-    const hours = dt.getHours().toString().padStart(2, '0');
-    const minutes = dt.getMinutes().toString().padStart(2, '0');
-    return `${day}/${month} - ${hours}h${minutes}`;
+    return `${day}/${month}`;
   };
 
   // Fonction pour récupérer les amis et transformer en "conversations"
@@ -389,7 +387,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   friendName: { fontSize: 16, fontWeight: '600', color: Colors.text },
-  messageTime: { fontSize: 12, color: Colors.gray400 },
+  messageTime: { fontSize: 12, color: Colors.gray400, paddingRight: 8 },
   unreadTime: { fontWeight: 'bold', color: Colors.gray700 },
   lastMessage: { fontSize: 14, color: Colors.gray700, marginTop: 4 },
   unreadText: { fontWeight: 'bold' },
