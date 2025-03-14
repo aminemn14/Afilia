@@ -58,6 +58,13 @@ Afilia est une application mobile développée avec React Native et Expo, conçu
     ```bash
     MONGO_URI= # URL de connexion à votre base de données MongoDB
     PORT= # Port sur lequel le serveur backend sera lancé (ex: 5000)
+
+    MESSAGE_SECRET= # Clé générée pour les conversations
+
+    DO_ACCESS_KEY= # Access Key de votre Space Digital Ocean
+    DO_SECRET_KEY= # Secret Key de votre Space Digital Ocean
+    DO_SPACES_ENDPOINT= # Endpoint de votre Space Digital Ocean
+    DO_SPACES_BUCKET= # Nom de votre Bucket Digital Ocean
     ```
 
     <br> 2. Lancer le serveur backend :
@@ -74,9 +81,6 @@ Afilia est une application mobile développée avec React Native et Expo, conçu
      <br><br>
 
     ```bash
-    SUPABASE_URL= # URL de votre projet Supabase
-    SUPABASE_ANON_KEY= # Clé anonyme pour accéder à Supabase
-
     API_BASE_URL= # URL de votre API backend
     ```
 

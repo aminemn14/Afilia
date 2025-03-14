@@ -13,7 +13,6 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import axios from 'axios';
-import { supabase } from '@/lib/supabaseClient';
 import Colors from '../constants/Colors';
 import { useRouter } from 'expo-router';
 import apiConfig from '@/config/apiConfig';
@@ -107,54 +106,41 @@ export default function CreateLocationScreen() {
     setFormData({ ...formData, localImageUri: '', imageUrl: '' });
   };
 
-  // Upload de l'image locale vers Supabase et renvoi de l'URL publique
-  const uploadLocalImage = async (): Promise<string> => {
-    if (!formData.localImageUri) return '';
-    try {
-      const arrayBuffer = await fetch(formData.localImageUri).then((res) =>
-        res.arrayBuffer()
-      );
-      const fileExt =
-        formData.localImageUri.split('.').pop()?.toLowerCase() || 'jpg';
-      const fileName = `locations/location_${Date.now()}.${fileExt}`;
-      console.log('Nom de fichier généré :', fileName);
+  // Fonction d'upload via le endpoint générique (DigitalOcean Spaces)
+  const uploadFileToBackend = async (fileUri: string, folder = 'locations') => {
+    const formDataUpload = new FormData();
+    formDataUpload.append('file', {
+      uri: fileUri,
+      name: 'file.jpg',
+      type: 'image/jpeg',
+    } as any);
 
-      const { data, error } = await supabase.storage
-        .from('Afilia-UserPicture')
-        .upload(fileName, arrayBuffer, {
-          contentType: formData.localImageUri.includes('.png')
-            ? 'image/png'
-            : 'image/jpeg',
-        });
-
-      console.log('Upload response :', { data, error });
-      if (error) {
-        console.error('Erreur lors de l’upload sur Supabase', error.message);
-        throw error;
+    const response = await fetch(
+      `${apiConfig.baseURL}/api/upload?folder=${folder}`,
+      {
+        method: 'POST',
+        body: formDataUpload,
       }
+    );
 
-      const { data: publicData } = supabase.storage
-        .from('Afilia-UserPicture')
-        .getPublicUrl(fileName);
-      const publicUrl = publicData.publicUrl;
-      if (!publicUrl) {
-        throw new Error("L'URL de l'image n'a pas pu être récupérée");
-      }
-      console.log('URL publique :', publicUrl);
-      return publicUrl;
-    } catch (err) {
-      Alert.alert('Erreur', "Impossible d'uploader l'image");
-      throw err;
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Erreur lors de l'upload : ${errorText}`);
     }
+
+    const data = await response.json();
+    return data.url;
   };
 
   const handleAddLocation = async () => {
     try {
       setUploading(true);
       let uploadedImageUrl = formData.imageUrl;
-      // Upload uniquement si une image a été sélectionnée via le picker
       if (formData.localImageUri && !uploadedImageUrl) {
-        uploadedImageUrl = await uploadLocalImage();
+        uploadedImageUrl = await uploadFileToBackend(
+          formData.localImageUri,
+          'locations'
+        );
       }
 
       const locationData = {
@@ -172,20 +158,18 @@ export default function CreateLocationScreen() {
       };
 
       // Logs pour débogage
-      const apiUrl = `${apiConfig.baseURL}/api/locations`;
-      console.log('API URL:', apiUrl);
+      console.log('API URL:', `${apiConfig.baseURL}/api/locations`);
       console.log('Données envoyées:', locationData);
 
-      const response = await axios.post(apiUrl, locationData);
+      const response = await axios.post(
+        `${apiConfig.baseURL}/api/locations`,
+        locationData
+      );
       console.log('Réponse de l’API:', response.data);
       Alert.alert('Succès', 'Le lieu a été créé avec succès');
       router.push('/(tabs)');
     } catch (error: any) {
       console.error('Erreur lors de la création du lieu :', error);
-      if (error.response) {
-        console.error('Status:', error.response.status);
-        console.error('Données de l’erreur:', error.response.data);
-      }
       Alert.alert(
         'Erreur',
         'Une erreur est survenue lors de la création du lieu'
@@ -226,7 +210,6 @@ export default function CreateLocationScreen() {
           />
         </View>
 
-        {/* Latitude */}
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Latitude</Text>
           <TextInput
@@ -273,7 +256,6 @@ export default function CreateLocationScreen() {
           />
         </View>
 
-        {/* Code postal */}
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Code postal</Text>
           <TextInput
@@ -286,7 +268,6 @@ export default function CreateLocationScreen() {
           />
         </View>
 
-        {/* Sélection multiple des types d'événement */}
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Types d'événement</Text>
           <View style={styles.chipsContainer}>
@@ -318,9 +299,7 @@ export default function CreateLocationScreen() {
             {formData.localImageUri || formData.imageUrl ? (
               <>
                 <Image
-                  source={{
-                    uri: formData.localImageUri || formData.imageUrl,
-                  }}
+                  source={{ uri: formData.localImageUri || formData.imageUrl }}
                   style={styles.image}
                 />
                 <TouchableOpacity
@@ -357,7 +336,6 @@ export default function CreateLocationScreen() {
             value={formData.imageUrl}
             onChangeText={(text) => handleInputChange('imageUrl', text)}
             onBlur={() => {
-              // Si une URL est saisie, on réinitialise la sélection locale
               if (formData.imageUrl) {
                 setFormData({ ...formData, localImageUri: '' });
               }

@@ -100,46 +100,32 @@ export default function ProfileSettingsScreen() {
     }
   };
 
-  const uploadLocalAvatar = async (): Promise<string> => {
-    if (!localAvatarUri) return '';
-    try {
-      const arrayBuffer = await fetch(localAvatarUri).then((res) =>
-        res.arrayBuffer()
-      );
-      const fileExt = localAvatarUri.split('.').pop()?.toLowerCase() || 'jpg';
-      // Nom du fichier : si l'utilisateur est défini, utiliser son ID, sinon générer un nom basé sur Date.now()
-      const fileName = user
-        ? `avatars/avatar_${user._id}.${fileExt}`
-        : `avatars/avatar_${Date.now()}.${fileExt}`;
-      console.log('Nom de fichier généré :', fileName);
+  const uploadFileToBackend = async (
+    fileUri: string,
+    folder = 'profile-pictures'
+  ) => {
+    const formData = new FormData();
+    formData.append('file', {
+      uri: fileUri,
+      name: 'file.jpg',
+      type: 'image/jpeg',
+    } as any);
 
-      const { data, error } = await supabase.storage
-        .from('Afilia-UserPicture')
-        .upload(fileName, arrayBuffer, {
-          contentType: localAvatarUri.includes('.png')
-            ? 'image/png'
-            : 'image/jpeg',
-        });
-      console.log('Upload response :', { data, error });
-
-      if (error) {
-        console.error('Erreur lors de l’upload sur Supabase', error.message);
-        throw error;
+    const response = await fetch(
+      `${apiConfig.baseURL}/api/upload?folder=${folder}`,
+      {
+        method: 'POST',
+        body: formData,
       }
+    );
 
-      const { data: publicData } = supabase.storage
-        .from('Afilia-UserPicture')
-        .getPublicUrl(fileName);
-      const publicUrl = publicData.publicUrl;
-      if (!publicUrl) {
-        throw new Error("L'URL de l'avatar n'a pas pu être récupérée");
-      }
-      console.log('URL publique :', publicUrl);
-      return publicUrl;
-    } catch (err) {
-      Alert.alert('Erreur', "Impossible d'uploader l'avatar");
-      throw err;
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Erreur lors de l'upload : ${errorText}`);
     }
+
+    const data = await response.json();
+    return data.url;
   };
 
   const handleSave = async () => {
@@ -147,7 +133,7 @@ export default function ProfileSettingsScreen() {
       let updatedAvatar = avatar;
 
       if (localAvatarUri) {
-        updatedAvatar = await uploadLocalAvatar();
+        updatedAvatar = await uploadFileToBackend(localAvatarUri);
       }
 
       const updatedData = {
