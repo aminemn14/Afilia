@@ -15,6 +15,7 @@ const UserSchema = new mongoose.Schema({
   // Champs spécifiques au Profile (extension de User)
   bio: { type: String, default: '' },
   avatar: { type: String, default: '' },
+  cashbackBalance: { type: Number, default: 0 },
 });
 
 module.exports = mongoose.model('User', UserSchema);

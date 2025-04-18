@@ -14,6 +14,7 @@ const messageRoutes = require('./routes/messageRoutes');
 const friendRoutes = require('./routes/friendRoutes');
 const invitationRoutes = require('./routes/invitationRoutes');
 const conversationRoutes = require('./routes/conversationRoutes');
+const cartRoutes = require('./routes/cartRoutes');
 
 // Route d'upload générique
 const genericUploadRoutes = require('./routes/genericUpload');
@@ -52,6 +53,7 @@ app.use('/api/friends', friendRoutes);
 app.use('/api/invitations', invitationRoutes);
 app.use('/api/conversations', conversationRoutes);
 app.use('/api', genericUploadRoutes);
+app.use('/api/cart', cartRoutes);
 
 const PORT = process.env.PORT || 8070;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
