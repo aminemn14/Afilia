@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   SafeAreaView,
   View,
@@ -24,46 +25,79 @@ export default function EventDetailScreen() {
   const searchParams = useSearchParams();
   const id = searchParams.get('id');
 
+  const [userId, setUserId] = useState<string | null>(null);
   const [event, setEvent] = useState<Event | null>(null);
   const [location, setLocation] = useState<Location | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
+  // Charger l'utilisateur
+  useEffect(() => {
+    AsyncStorage.getItem('user')
+      .then((json) => {
+        if (json) {
+          const u = JSON.parse(json);
+          setUserId(u._id || u.id);
+        }
+      })
+      .catch((err) => console.error('Erreur loadUser', err));
+  }, []);
+
+  // Charger l'événement et le lieu
   useEffect(() => {
     if (!id) return;
-
-    const fetchEvent = async () => {
+    (async () => {
       try {
-        const response = await fetch(`${apiConfig.baseURL}/api/events/${id}`);
-        if (!response.ok) {
-          throw new Error('Erreur lors de la récupération de l’événement');
-        }
-        const eventData: Event = await response.json();
-        setEvent(eventData);
-
-        const locationId = eventData.location_id;
-        if (locationId) {
+        const res = await fetch(`${apiConfig.baseURL}/api/events/${id}`);
+        if (!res.ok) throw new Error('Erreur récupération événement');
+        const data: Event = await res.json();
+        setEvent(data);
+        if (data.location_id) {
           const locRes = await fetch(
-            `${apiConfig.baseURL}/api/locations/${locationId}`
+            `${apiConfig.baseURL}/api/locations/${data.location_id}`
           );
-          if (!locRes.ok) {
-            throw new Error('Erreur lors de la récupération du lieu');
+          if (locRes.ok) {
+            const locData: Location = await locRes.json();
+            setLocation(locData);
           }
-          const locationData: Location = await locRes.json();
-          setLocation(locationData);
         }
-      } catch (error) {
-        console.error(error);
-        Alert.alert(
-          'Erreur',
-          'Impossible de récupérer les données de cet événement.'
-        );
+      } catch (err) {
+        console.error(err);
+        Alert.alert('Erreur', 'Impossible de récupérer l’événement.');
       } finally {
         setLoading(false);
       }
-    };
-
-    fetchEvent();
+    })();
   }, [id]);
+
+  const handleAddToCart = async () => {
+    if (!userId || !event) {
+      Alert.alert('Erreur', 'Utilisateur ou événement introuvable.');
+      return;
+    }
+    try {
+      const res = await fetch(`${apiConfig.baseURL}/api/cart/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, eventId: event._id }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        if (body.error?.includes('déjà')) {
+          Alert.alert('Attention', 'Cet événement est déjà dans votre panier.');
+        } else {
+          throw new Error(body.error || 'Erreur ajout panier');
+        }
+        return;
+      }
+      Alert.alert('Succès', 'Événement ajouté au panier 🎉', [
+        { text: 'Voir mon panier', onPress: () => router.push('/cart') },
+        { text: 'Rester ici', style: 'cancel' },
+      ]);
+    } catch (err: any) {
+      console.error(err);
+      Alert.alert('Erreur', err.message);
+    }
+  };
 
   if (loading) {
     return (
@@ -89,66 +123,43 @@ export default function EventDetailScreen() {
     );
   }
 
-  // Fonctions de formatage
-  const formatDate = (isoString: string) => {
-    const date = new Date(isoString);
-    return date.toLocaleDateString('fr-FR', {
+  const isSoldOut = event.remaining_participants === 0;
+
+  // Formatage
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleDateString('fr-FR', {
       day: 'numeric',
       month: 'long',
       year: 'numeric',
     });
-  };
-
-  const formatTimeDisplay = (timeString: string) => {
-    return timeString;
-  };
-
-  const formatPhoneNumber = (phone: string) => {
-    return phone.replace(/(\d{2})(?=\d)/g, '$1 ').trim();
-  };
-
-  const isSameDay = (dateString1: string, dateString2: string) => {
-    const d1 = new Date(dateString1);
-    const d2 = new Date(dateString2);
-    return (
-      d1.getFullYear() === d2.getFullYear() &&
-      d1.getMonth() === d2.getMonth() &&
-      d1.getDate() === d2.getDate()
-    );
-  };
-
   const displayPrice = event.is_free ? 'Gratuit' : `${event.price}€`;
   const eventType =
     event.event_type.charAt(0).toUpperCase() + event.event_type.slice(1);
-
-  const dateTimeString = isSameDay(event.start_date, event.end_date)
-    ? `Le ${formatDate(event.start_date)} de ${formatTimeDisplay(
-        event.start_time
-      )} à ${formatTimeDisplay(event.end_time)}`
-    : `Du ${formatDate(event.start_date)} à ${formatTimeDisplay(
-        event.start_time
-      )}\nAu ${formatDate(event.end_date)} à ${formatTimeDisplay(
+  const sameDay = (d1: string, d2: string) =>
+    new Date(d1).toDateString() === new Date(d2).toDateString();
+  const dateTimeString = sameDay(event.start_date, event.end_date)
+    ? `Le ${formatDate(event.start_date)} de ${event.start_time} à ${
         event.end_time
-      )}`;
-
-  const bannerImageUri = location ? location.image_url : '';
+      }`
+    : `Du ${formatDate(event.start_date)} à ${
+        event.start_time
+      }\nAu ${formatDate(event.end_date)} à ${event.end_time}`;
 
   return (
     <View style={styles.mainContainer}>
       <View style={styles.container}>
         <View style={styles.bannerContainer}>
           <ImageBackground
-            source={{ uri: bannerImageUri }}
+            source={{ uri: location?.image_url }}
             style={styles.bannerImage}
-            resizeMode="cover"
           >
             <LinearGradient
               colors={['rgba(0,0,0,0.4)', 'rgba(0,0,0,0.7)']}
               style={styles.bannerOverlay}
             >
               <TouchableOpacity
-                style={styles.backIcon}
                 onPress={() => router.back()}
+                style={styles.backIcon}
               >
                 <Ionicons name="chevron-back" size={16} color={Colors.text} />
               </TouchableOpacity>
@@ -157,8 +168,6 @@ export default function EventDetailScreen() {
             </LinearGradient>
           </ImageBackground>
         </View>
-
-        {/* Contenu principal */}
         <ScrollView
           contentContainerStyle={styles.scrollContentContainer}
           showsVerticalScrollIndicator={false}
@@ -185,81 +194,60 @@ export default function EventDetailScreen() {
               </Text>
             </View>
           </View>
-
           <View style={styles.detailCard}>
             <Text style={styles.cardTitle}>Dates et Horaires</Text>
             <Text style={styles.cardText}>{dateTimeString}</Text>
           </View>
-
           <View style={styles.detailCard}>
             <Text style={styles.cardTitle}>Infos Organisateur</Text>
-            <View style={styles.infoLine}>
-              <Ionicons
-                name="person"
-                size={18}
-                color={Colors.primary}
-                style={styles.infoIcon}
-              />
-              <Text style={styles.infoText}>{event.organizer || '—'}</Text>
-            </View>
-            <View style={styles.infoLine}>
-              <Ionicons
-                name="call"
-                size={18}
-                color={Colors.primary}
-                style={styles.infoIcon}
-              />
-              <Text style={styles.infoText}>
-                {event.tel ? formatPhoneNumber(event.tel) : '—'}
-              </Text>
-            </View>
-            <View style={styles.infoLine}>
-              <Ionicons
-                name="mail"
-                size={18}
-                color={Colors.primary}
-                style={styles.infoIcon}
-              />
-              <Text style={styles.infoText}>{event.email || '—'}</Text>
-            </View>
+            {['person', 'call', 'mail'].map((icon, idx) => (
+              <View key={idx} style={styles.infoLine}>
+                <Ionicons
+                  name={icon as any}
+                  size={18}
+                  color={Colors.primary}
+                  style={styles.infoIcon}
+                />
+                <Text style={styles.infoText}>
+                  {
+                    {
+                      person: event.organizer || '—',
+                      call: event.tel
+                        ? event.tel.replace(/(\d{2})(?=\d)/g, '$1 ')
+                        : '—',
+                      mail: event.email || '—',
+                    }[icon]
+                  }
+                </Text>
+              </View>
+            ))}
           </View>
-
           <View style={styles.detailCard}>
             <Text style={styles.cardTitle}>Description</Text>
             <Text style={styles.cardText}>{event.description}</Text>
           </View>
-
           <View style={styles.detailCard}>
             <Text style={styles.cardTitle}>Lieu</Text>
-            {location ? (
-              <>
-                <Text style={styles.cardText}>
-                  <Text style={{ fontWeight: '700' }}>
-                    {location.name}
-                    {'\n'}
-                  </Text>
-                  {location.address}, {location.city} {location.zipcode}
-                </Text>
-                {location.description ? (
-                  <View style={{ marginTop: 8 }}>
-                    <Text style={styles.cardSubtitle}>À propos du lieu</Text>
-                    <Text style={styles.cardText}>{location.description}</Text>
-                  </View>
-                ) : null}
-              </>
-            ) : (
-              <Text style={styles.cardText}>Adresse non disponible</Text>
-            )}
+            <Text style={styles.cardText}>
+              {location
+                ? `${location.name}, ${location.address}`
+                : 'Adresse non disponible'}
+            </Text>
           </View>
         </ScrollView>
-
         <TouchableOpacity
-          style={styles.fixedButton}
-          onPress={() => {
-            // TODO: Ajouter l'événement au panier
-          }}
+          style={[styles.fixedButton, isSoldOut && styles.disabledButton]}
+          onPress={handleAddToCart}
+          disabled={isSoldOut}
         >
-          <Text style={styles.fixedButtonText}>Ajouter au panier</Text>
+          <Text
+            style={[
+              styles.fixedButtonText,
+              isSoldOut && styles.disabledButtonText,
+            ]}
+          >
+            {isSoldOut ? 'Événement Complet' : 'Ajouter au panier'}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -267,30 +255,14 @@ export default function EventDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  mainContainer: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
+  mainContainer: { flex: 1, backgroundColor: Colors.background },
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
     position: 'relative',
+    backgroundColor: Colors.background,
   },
-  loaderContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  bannerContainer: {
-    width: '100%',
-    height: 220,
-    backgroundColor: Colors.gray300,
-    overflow: 'hidden',
-  },
-  bannerImage: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
+  bannerContainer: { width: '100%', height: 220, overflow: 'hidden' },
+  bannerImage: { flex: 1, justifyContent: 'flex-end' },
   bannerOverlay: {
     width: '100%',
     height: '100%',
@@ -298,17 +270,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 16,
     justifyContent: 'flex-end',
-  },
-  bannerTitle: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: Colors.white,
-    marginBottom: 4,
-  },
-  bannerPrice: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: Colors.white,
   },
   backIcon: {
     position: 'absolute',
@@ -319,16 +280,15 @@ const styles = StyleSheet.create({
     padding: 6,
     borderRadius: 20,
   },
-  scrollContentContainer: {
-    padding: 16,
-    paddingBottom: 100,
+  bannerTitle: {
+    fontSize: 26,
+    fontWeight: 'bold',
+    color: Colors.white,
+    marginBottom: 4,
   },
-  chipContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 16,
-  },
+  bannerPrice: { fontSize: 20, fontWeight: '600', color: Colors.white },
+  scrollContentContainer: { padding: 16, paddingBottom: 100 },
+  chipContainer: { flexDirection: 'row', gap: 8, marginBottom: 16 },
   chipBase: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -336,22 +296,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
-  typeChip: {
-    backgroundColor: Colors.secondary,
-  },
-  participantsChip: {
-    backgroundColor: Colors.accent,
-  },
-  typeChipText: {
-    fontSize: 14,
-    color: Colors.text,
-    fontWeight: '600',
-  },
-  chipText: {
-    fontSize: 14,
-    color: Colors.white,
-    fontWeight: '600',
-  },
+  typeChip: { backgroundColor: Colors.secondary },
+  participantsChip: { backgroundColor: Colors.accent },
+  typeChipText: { fontSize: 14, color: Colors.text, fontWeight: '600' },
+  chipText: { fontSize: 14, color: Colors.white, fontWeight: '600' },
   detailCard: {
     backgroundColor: Colors.white,
     borderRadius: 12,
@@ -369,55 +317,27 @@ const styles = StyleSheet.create({
     color: Colors.text,
     marginBottom: 8,
   },
-  cardSubtitle: {
-    marginTop: 6,
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.gray700,
-    marginBottom: 4,
-  },
-  cardText: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: Colors.gray700,
-  },
-  infoLine: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 8,
-  },
-  infoIcon: {
-    marginRight: 6,
-  },
-  infoText: {
-    fontSize: 15,
-    color: Colors.gray700,
-  },
+  cardText: { fontSize: 15, lineHeight: 22, color: Colors.gray700 },
+  infoLine: { flexDirection: 'row', alignItems: 'center', marginVertical: 8 },
+  infoIcon: { marginRight: 6 },
+  infoText: { fontSize: 15, color: Colors.gray700 },
   fixedButton: {
     position: 'absolute',
     bottom: 20,
-    backgroundColor: Colors.accent,
-    paddingVertical: 16,
     width: '80%',
     alignSelf: 'center',
+    backgroundColor: Colors.accent,
+    paddingVertical: 16,
     borderRadius: 30,
     alignItems: 'center',
     elevation: 2,
   },
-  fixedButtonText: {
-    color: Colors.white,
-    fontSize: 16,
-    fontWeight: '700',
+  fixedButtonText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
+  disabledButton: {
+    backgroundColor: Colors.gray300,
   },
-  backButton: {
-    backgroundColor: Colors.primaryLight,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  backButtonText: {
-    fontSize: 16,
-    color: Colors.white,
+  disabledButtonText: {
+    color: Colors.gray500,
   },
   errorContainer: {
     flex: 1,
@@ -431,4 +351,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
   },
+  backButton: {
+    backgroundColor: Colors.primaryLight,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  backButtonText: { fontSize: 16, color: Colors.white },
 });

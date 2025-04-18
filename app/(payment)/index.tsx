@@ -21,10 +21,24 @@ import {
   Keyboard,
   Alert,
 } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '../constants/Colors';
 import cardBackgrounds from '../constants/CardBackgrounds';
+import apiConfig from '@/config/apiConfig';
 
 export default function PaymentScreen(): JSX.Element {
+  const {
+    total: totalParam = '0',
+    items = '[]',
+    cashbackUsed: cashbackUsedParam = '0',
+  } = useLocalSearchParams();
+  const parsedItems = useMemo(() => JSON.parse(items as string), [items]);
+  const totalAmount = useMemo(() => Number(totalParam), [totalParam]);
+  const cashbackUsed = useMemo(
+    () => Number(cashbackUsedParam),
+    [cashbackUsedParam]
+  );
   const windowWidth = Dimensions.get('window').width;
   const CARD_WIDTH = windowWidth * 0.9;
   const CARD_HEIGHT = CARD_WIDTH / 1.59;
@@ -37,14 +51,12 @@ export default function PaymentScreen(): JSX.Element {
   const [cardCvv, setCardCvv] = useState('');
   const [isCardFlipped, setIsCardFlipped] = useState(false);
 
-  // Animated values pour chaque input
   const cardNumberAnim = useRef(new Animated.Value(0)).current;
   const cardNameAnim = useRef(new Animated.Value(0)).current;
   const cardMonthAnim = useRef(new Animated.Value(0)).current;
   const cardYearAnim = useRef(new Animated.Value(0)).current;
   const cardCvvAnim = useRef(new Animated.Value(0)).current;
 
-  // Animation pour le flip de la carte
   const flipAnim = useRef(new Animated.Value(0)).current;
   const flipCard = (status: boolean) => {
     setIsCardFlipped(status);
@@ -63,13 +75,11 @@ export default function PaymentScreen(): JSX.Element {
     }).start();
   };
 
-  // Interpolations pour chaque champ
   const getBorderColor = (anim: Animated.Value) =>
     anim.interpolate({
       inputRange: [0, 1],
       outputRange: [Colors.gray300, Colors.accent],
     });
-
   const getShadowOpacity = (anim: Animated.Value) =>
     anim.interpolate({
       inputRange: [0, 1],
@@ -77,11 +87,9 @@ export default function PaymentScreen(): JSX.Element {
     });
 
   const minCardYear = new Date().getFullYear();
-
   const minCardMonth = useMemo(() => {
-    if (parseInt(cardYear) === minCardYear % 100) {
+    if (parseInt(cardYear) === minCardYear % 100)
       return new Date().getMonth() + 1;
-    }
     return 1;
   }, [cardYear]);
 
@@ -100,109 +108,113 @@ export default function PaymentScreen(): JSX.Element {
     outputRange: ['180deg', '360deg'],
   });
 
-  // Affichage du numéro de carte sur la carte
   const renderCardNumber = () => {
-    // Supprime les espaces pour obtenir exactement les chiffres saisis
-    const cleanedNumber = cardNumber.replace(/\s/g, '');
-    const paddedNumber = cleanedNumber.padEnd(16, '•');
+    const cleaned = cardNumber.replace(/\s/g, '');
+    const padded = cleaned.padEnd(16, '•');
     let masked = '';
     for (let i = 0; i < 16; i++) {
-      if (i < 4) {
-        // Les 4 premiers chiffres s'affichent normalement
-        masked += paddedNumber[i];
-      } else if (i >= 4 && i < 12) {
-        // Les chiffres du milieu sont masqués
-        masked += paddedNumber[i] === '•' ? '•' : '*';
-      } else {
-        // Les 4 derniers chiffres s'affichent normalement
-        masked += paddedNumber[i];
-      }
-      // Insère un espace toutes les 4 positions, sauf après le dernier groupe
-      if ((i + 1) % 4 === 0 && i < 15) {
-        masked += ' ';
-      }
+      if (i < 4) masked += padded[i];
+      else if (i < 12) masked += padded[i] === '•' ? '•' : '*';
+      else masked += padded[i];
+      if ((i + 1) % 4 === 0 && i < 15) masked += ' ';
     }
     return masked;
   };
-
-  // Formatage du numéro de carte dans l'input
   const handleCardNumberChange = (text: string) => {
     const cleaned = text.replace(/\s/g, '');
-    const maxLength = 16;
-    if (/^\d*$/.test(cleaned) && cleaned.length <= maxLength) {
-      const formatted = cleaned.replace(/(.{4})/g, '$1 ').trim();
-      setCardNumber(formatted);
+    if (/^\d*$/.test(cleaned) && cleaned.length <= 16) {
+      setCardNumber(cleaned.replace(/(.{4})/g, '$1 ').trim());
     }
   };
 
   const keyboardOffset = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    const showEvent =
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent =
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
-    const keyboardShowListener = Keyboard.addListener(showEvent, (event) => {
-      const offset = event.endCoordinates.height;
+    const show = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hide = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(show, (e) => {
       Animated.timing(keyboardOffset, {
-        toValue: -offset,
-        duration: event.duration || 250,
+        toValue: -e.endCoordinates.height,
+        duration: e.duration || 250,
         useNativeDriver: true,
       }).start();
     });
-    const keyboardHideListener = Keyboard.addListener(hideEvent, (event) => {
+    const hideSub = Keyboard.addListener(hide, (e) => {
       Animated.timing(keyboardOffset, {
         toValue: 0,
-        duration: event.duration || 250,
+        duration: e.duration || 250,
         useNativeDriver: true,
       }).start();
     });
-
     return () => {
-      keyboardShowListener.remove();
-      keyboardHideListener.remove();
+      showSub.remove();
+      hideSub.remove();
     };
-  }, [keyboardOffset]);
+  }, []);
 
-  // Fonction de validation du formulaire
-  const handleValidation = useCallback(() => {
+  const router = useRouter();
+
+  const handleValidation = useCallback(async () => {
+    // validations front
     if (!cardName || !cardNumber || !cardMonth || !cardYear || !cardCvv) {
-      Alert.alert('Erreur', 'Veuillez remplir tous les champs');
-      return;
+      return Alert.alert('Erreur', 'Veuillez remplir tous les champs');
     }
-    const currentYear = new Date().getFullYear();
-    const currentYearTwoDigit = currentYear % 100;
-    const inputYear = parseInt(cardYear, 10);
-    const inputMonth = parseInt(cardMonth, 10);
-    if (isNaN(inputYear) || isNaN(inputMonth)) {
-      Alert.alert('Erreur', "La date d'expiration est invalide");
-      return;
+    const year2 = new Date().getFullYear() % 100;
+    const y = parseInt(cardYear, 10);
+    const m = parseInt(cardMonth, 10);
+    if (isNaN(y) || isNaN(m)) {
+      return Alert.alert('Erreur', "La date d'expiration est invalide");
     }
-    if (inputMonth < 1 || inputMonth > 12) {
-      Alert.alert('Erreur', 'Le mois doit être compris entre 1 et 12');
-      return;
+    if (m < 1 || m > 12) {
+      return Alert.alert('Erreur', 'Le mois doit être entre 1 et 12');
     }
-    if (inputYear < currentYearTwoDigit) {
-      Alert.alert('Erreur', 'La carte est expirée');
-      return;
-    }
-    if (
-      inputYear === currentYearTwoDigit &&
-      inputMonth < new Date().getMonth() + 1
-    ) {
-      Alert.alert('Erreur', "Le mois d'expiration est invalide");
-      return;
+    if (y < year2 || (y === year2 && m < new Date().getMonth() + 1)) {
+      return Alert.alert('Erreur', 'La carte est expirée');
     }
     if (cardNumber.replace(/\s/g, '').length !== 16) {
-      Alert.alert('Erreur', 'Le numéro de carte doit contenir 16 chiffres');
-      return;
+      return Alert.alert('Erreur', 'Le numéro doit contenir 16 chiffres');
     }
     if (cardCvv.length !== 3) {
-      Alert.alert('Erreur', 'Le CVV doit contenir 3 chiffres');
-      return;
+      return Alert.alert('Erreur', 'Le CVV doit contenir 3 chiffres');
     }
-    Alert.alert('Succès', 'Paiement effectué');
-  }, [cardName, cardNumber, cardMonth, cardYear, cardCvv]);
+
+    // appel API checkout
+    try {
+      const userJson = await AsyncStorage.getItem('user');
+      const { _id: userId } = JSON.parse(userJson || '{}');
+
+      const res = await fetch(`${apiConfig.baseURL}/api/cart/checkout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          cashbackUsed,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        return Alert.alert('Erreur', data.error || 'Paiement refusé');
+      }
+
+      Alert.alert(
+        'Succès',
+        `Vous avez payé ${data.paidAmount.toFixed(
+          2
+        )} €. Vous gagnez ${data.cashbackEarned.toFixed(2)} € de cashback.`,
+        [{ text: 'OK', onPress: () => router.replace('/cart') }]
+      );
+    } catch (err: any) {
+      Alert.alert('Erreur', err.message);
+    }
+  }, [
+    cardName,
+    cardNumber,
+    cardMonth,
+    cardYear,
+    cardCvv,
+    cashbackUsed,
+    router,
+  ]);
 
   return (
     <KeyboardAvoidingView
@@ -212,12 +224,14 @@ export default function PaymentScreen(): JSX.Element {
     >
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.container}>
+          {/* Visual carte */}
           <View
             style={[
               styles.cardContainer,
               { width: CARD_WIDTH, height: CARD_HEIGHT },
             ]}
           >
+            {/* Face avant */}
             <Animated.View
               style={[
                 styles.card,
@@ -261,14 +275,13 @@ export default function PaymentScreen(): JSX.Element {
                   <View>
                     <Text style={styles.label}>EXP</Text>
                     <Text style={styles.expiry}>
-                      {cardMonth || 'MM'}/
-                      {cardYear ? String(cardYear).slice(-2) : 'AA'}
+                      {cardMonth || 'MM'}/{cardYear || 'AA'}
                     </Text>
                   </View>
                 </View>
               </View>
             </Animated.View>
-
+            {/* Face arrière */}
             <Animated.View
               style={[
                 styles.card,
@@ -309,8 +322,9 @@ export default function PaymentScreen(): JSX.Element {
             </Animated.View>
           </View>
 
+          {/* Formulaire */}
           <View style={styles.form}>
-            {/* Numéro de carte */}
+            {/* Numéro */}
             <Text style={styles.inputLabel}>Numéro de carte</Text>
             <Animated.View
               style={[
@@ -332,8 +346,6 @@ export default function PaymentScreen(): JSX.Element {
                 placeholder="Numéro de carte"
                 placeholderTextColor={Colors.gray600}
                 autoComplete="cc-number"
-                accessible={true}
-                accessibilityLabel="Numéro de carte de crédit"
               />
             </Animated.View>
 
@@ -352,23 +364,23 @@ export default function PaymentScreen(): JSX.Element {
               <TextInput
                 style={styles.input}
                 value={cardName}
-                onChangeText={(text) => {
-                  const capitalizedText = text
+                onChangeText={(t) => {
+                  const cap = t
                     .toLowerCase()
                     .split(' ')
-                    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
                     .join(' ');
-                  setCardName(capitalizedText);
+                  setCardName(cap);
                 }}
                 onFocus={() => animateFocus(cardNameAnim, 1)}
                 onBlur={() => animateFocus(cardNameAnim, 0)}
                 placeholder="Nom complet"
                 placeholderTextColor={Colors.gray600}
                 autoComplete="name"
-                maxLength={30}
               />
             </Animated.View>
 
+            {/* Date & CVV */}
             <View style={styles.row}>
               {/* Mois */}
               <View style={[styles.column, { flex: 2 }]}>
@@ -456,8 +468,11 @@ export default function PaymentScreen(): JSX.Element {
               </View>
             </View>
 
+            {/* Bouton Payer */}
             <TouchableOpacity style={styles.button} onPress={handleValidation}>
-              <Text style={styles.buttonText}>Payer</Text>
+              <Text style={styles.buttonText}>
+                Payer {totalAmount.toFixed(2)} €
+              </Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -467,9 +482,7 @@ export default function PaymentScreen(): JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
+  safeArea: { flex: 1 },
   container: {
     flexGrow: 1,
     justifyContent: 'center',
@@ -486,85 +499,40 @@ const styles = StyleSheet.create({
     backfaceVisibility: 'hidden',
     position: 'absolute',
   },
-  cardBack: {
-    top: 0,
-  },
-  cardBg: {
-    borderRadius: 15,
-    position: 'absolute',
-  },
+  cardBack: { top: 0 },
+  cardBg: { borderRadius: 15, position: 'absolute' },
   overlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     width: '100%',
     height: '100%',
-    backgroundColor: 'rgba(6, 2, 29, 0.45)',
+    backgroundColor: 'rgba(6,2,29,0.45)',
     borderRadius: 15,
   },
-  cardContent: {
-    flex: 1,
-    padding: 15,
-    justifyContent: 'space-between',
-  },
-  cardTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  chip: {
-    width: 60,
-    height: 40,
-    resizeMode: 'contain',
-  },
-  cardType: {
-    width: 80,
-    height: 40,
-    resizeMode: 'contain',
-  },
+  cardContent: { flex: 1, padding: 15, justifyContent: 'space-between' },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between' },
+  chip: { width: 60, height: 40, resizeMode: 'contain' },
+  cardType: { width: 80, height: 40, resizeMode: 'contain' },
   cardNumber: {
     color: '#fff',
     fontSize: 22,
     fontWeight: '500',
     letterSpacing: 2,
   },
-  cardBottom: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  label: {
-    color: '#fff',
-    fontSize: 13,
-    opacity: 0.7,
-  },
-  cardHolder: {
-    color: '#fff',
-    fontSize: 14,
-    textTransform: 'uppercase',
-  },
-  expiry: {
-    color: '#fff',
-    fontSize: 14,
-  },
-  cardBackContent: {
-    flex: 1,
-    padding: 15,
-    justifyContent: 'flex-start',
-  },
+  cardBottom: { flexDirection: 'row', justifyContent: 'space-between' },
+  label: { color: '#fff', fontSize: 13, opacity: 0.7 },
+  cardHolder: { color: '#fff', fontSize: 14, textTransform: 'uppercase' },
+  expiry: { color: '#fff', fontSize: 14 },
+  cardBackContent: { flex: 1, padding: 15, justifyContent: 'flex-start' },
   strip: {
     backgroundColor: '#000',
     height: 50,
     marginTop: 30,
     borderRadius: 5,
   },
-  cvvContainer: {
-    marginTop: 20,
-    alignItems: 'flex-end',
-  },
-  cvvLabel: {
-    color: '#fff',
-    fontSize: 15,
-    marginBottom: 5,
-  },
+  cvvContainer: { marginTop: 20, alignItems: 'flex-end' },
+  cvvLabel: { color: '#fff', fontSize: 15, marginBottom: 5 },
   cvvBox: {
     backgroundColor: '#fff',
     borderRadius: 4,
@@ -572,16 +540,8 @@ const styles = StyleSheet.create({
     minWidth: 100,
     alignItems: 'flex-end',
   },
-  cvvText: {
-    color: Colors.text,
-    fontSize: 18,
-  },
-  cardTypeBack: {
-    width: 80,
-    height: 40,
-    resizeMode: 'contain',
-    marginTop: 10,
-  },
+  cvvText: { color: Colors.text, fontSize: 18 },
+  cardTypeBack: { width: 80, height: 40, resizeMode: 'contain', marginTop: 10 },
   form: {
     width: '100%',
     backgroundColor: '#fff',
@@ -593,16 +553,11 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 5,
   },
-  inputLabel: {
-    fontSize: 14,
-    color: Colors.gray500,
-    marginBottom: 5,
-  },
+  inputLabel: { fontSize: 14, color: Colors.gray500, marginBottom: 5 },
   inputContainer: {
     borderWidth: 1,
     borderRadius: 5,
     marginBottom: 20,
-    // Valeurs par défaut pour l'état "non focus"
     borderColor: Colors.gray300,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
@@ -613,13 +568,8 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: Colors.text,
   },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  column: {
-    marginRight: 10,
-  },
+  row: { flexDirection: 'row', justifyContent: 'space-between' },
+  column: { marginRight: 10 },
   button: {
     backgroundColor: Colors.accent,
     height: 55,
@@ -627,9 +577,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 22,
-    fontWeight: '500',
-  },
+  buttonText: { color: '#fff', fontSize: 22, fontWeight: '500' },
 });

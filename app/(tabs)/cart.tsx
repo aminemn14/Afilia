@@ -1,224 +1,229 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   TouchableOpacity,
+  TextInput,
+  Alert,
 } from 'react-native';
 import { MotiView } from 'moti';
 import { TrashIcon, ShoppingBagIcon } from 'react-native-heroicons/outline';
 import Colors from '../constants/Colors';
 import { useRouter } from 'expo-router';
+import LoadingContainer from '../components/LoadingContainer';
+import apiConfig from '@/config/apiConfig';
+import useSocket from '../hooks/useSocket';
 
-// Formatage de la date
 const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
-  const day = date.getDate().toString().padStart(2, '0');
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const year = date.getFullYear().toString().slice(-2);
-  return `${day}/${month}/${year}`;
+  const dd = date.getDate().toString().padStart(2, '0');
+  const mm = (date.getMonth() + 1).toString().padStart(2, '0');
+  const yy = date.getFullYear().toString().slice(-2);
+  return `${dd}/${mm}/${yy}`;
 };
-
-// MOCK des événements pour tester
-const MOCK_EVENTS = [
-  {
-    _id: '1',
-    id: '1',
-    name: 'Concert Rock Live',
-    event_type: 'concert',
-    current_participants: 10,
-    max_participants: 100,
-    remaining_participants: 90,
-    location_id: 'loc1',
-    created_at: '2025-02-01',
-    status: 'open',
-    price: 29.99,
-    is_free: false,
-    organizer: 'Organizer1',
-    tel: '0123456789',
-    email: 'contact@organizer1.com',
-    description: 'Un concert rock exceptionnel.',
-    start_date: '2025-03-15',
-    end_date: '2025-03-15',
-    start_time: '20:00',
-    end_time: '23:00',
-  },
-  {
-    _id: '2',
-    id: '2',
-    name: 'Spectacle de Magie',
-    event_type: 'théâtre',
-    current_participants: 20,
-    max_participants: 80,
-    remaining_participants: 60,
-    location_id: 'loc2',
-    created_at: '2025-02-05',
-    status: 'open',
-    price: 19.99,
-    is_free: false,
-    organizer: 'Organizer2',
-    tel: '0987654321',
-    email: 'contact@organizer2.com',
-    description: 'Un spectacle de magie fascinant.',
-    start_date: '2025-04-10',
-    end_date: '2025-04-10',
-    start_time: '18:00',
-    end_time: '20:00',
-  },
-  {
-    _id: '3',
-    id: '3',
-    name: 'Festival de Jazz',
-    event_type: 'concert',
-    current_participants: 50,
-    max_participants: 150,
-    remaining_participants: 100,
-    location_id: 'loc3',
-    created_at: '2025-02-10',
-    status: 'open',
-    price: 39.99,
-    is_free: false,
-    organizer: 'Organizer3',
-    tel: '0112233445',
-    email: 'contact@organizer3.com',
-    description: 'Un festival de jazz en plein air.',
-    start_date: '2025-05-05',
-    end_date: '2025-05-05',
-    start_time: '16:00',
-    end_time: '22:00',
-  },
-];
-
-// MOCK des lieux pour tester
-const MOCK_LOCATIONS = [
-  {
-    _id: 'loc1',
-    id: 'loc1',
-    name: 'Salle des Fêtes de Lille',
-    latitude: 50.6292,
-    longitude: 3.0573,
-    created_at: '2025-01-01',
-    address: '12 Rue de la Liberté',
-    city: 'Lille',
-    zipcode: '59000',
-    event_types: ['concert', 'théâtre'],
-    image_url: 'https://example.com/image1.jpg',
-    description: 'Lieu mythique pour les concerts à Lille.',
-    tel: '0102030405',
-    email: 'contact@sallefesteslille.com',
-  },
-  {
-    _id: 'loc2',
-    id: 'loc2',
-    name: 'Théâtre de la Magie Lille',
-    latitude: 50.6334,
-    longitude: 3.066,
-    created_at: '2025-01-05',
-    address: '25 Rue Faidherbe',
-    city: 'Lille',
-    zipcode: '59000',
-    event_types: ['théâtre'],
-    image_url: 'https://example.com/image2.jpg',
-    description: 'Scène pour spectacles de magie à Lille.',
-    tel: '0504030201',
-    email: 'info@theatredelamagielille.com',
-  },
-  {
-    _id: 'loc3',
-    id: 'loc3',
-    name: 'Parc du Jazz Lillois',
-    latitude: 50.6333,
-    longitude: 3.0586,
-    created_at: '2025-01-10',
-    address: '5 Boulevard Vauban',
-    city: 'Lomme',
-    zipcode: '59700',
-    event_types: ['concert'],
-    image_url: 'https://example.com/image3.jpg',
-    description: 'Festival en plein air dans la métropole lilloise.',
-    tel: '0607080910',
-    email: 'contact@parcdujazzlille.com',
-  },
-];
 
 export default function CartScreen() {
   const router = useRouter();
-  const [events, setEvents] = useState(MOCK_EVENTS);
+  const socketRef = useSocket();
+
+  const [userId, setUserId] = useState<string | null>(null);
+  const [cashbackBalance, setCashbackBalance] = useState<number>(0);
+  const [useCashback, setUseCashback] = useState<boolean>(false);
+  const [cashbackToUse, setCashbackToUse] = useState<string>('0');
+  const [cashbackValidated, setCashbackValidated] = useState<boolean>(false);
+
+  const [events, setEvents] = useState<
+    {
+      id: string;
+      name: string;
+      price: number;
+      start_date: string;
+      locationName: string;
+    }[]
+  >([]);
+  const [loading, setLoading] = useState(true);
   const [recapExpanded, setRecapExpanded] = useState(false);
 
-  const removeEvent = (id: string) => {
-    setEvents((prevEvents) => prevEvents.filter((event) => event.id !== id));
+  // Récupère userId + solde cashback
+  useEffect(() => {
+    AsyncStorage.getItem('user')
+      .then((json) => {
+        if (!json) return;
+        const u = JSON.parse(json);
+        const id = u._id || u.id;
+        setUserId(id);
+        socketRef.current?.emit('joinRoom', id);
+        // fetch cashback
+        fetch(`${apiConfig.baseURL}/api/users/${id}`)
+          .then((r) => (r.ok ? r.json() : Promise.reject()))
+          .then((uData) => setCashbackBalance(uData.cashbackBalance ?? 0))
+          .catch(console.error);
+      })
+      .catch(console.error);
+  }, []);
+
+  // Fetch du panier
+  const fetchCart = async () => {
+    if (!userId) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${apiConfig.baseURL}/api/cart/${userId}`);
+      if (!res.ok) throw new Error('Impossible de charger le panier');
+      const cart = await res.json();
+      const enriched = await Promise.all(
+        cart.items.map(async (it: any) => {
+          const { event, price } = it;
+          let locationName = '';
+          try {
+            const locRes = await fetch(
+              `${apiConfig.baseURL}/api/locations/${event.location_id}`
+            );
+            if (locRes.ok) {
+              const locData = await locRes.json();
+              locationName = locData.name;
+            }
+          } catch {}
+          return {
+            id: event._id,
+            name: event.name,
+            price,
+            start_date: event.start_date,
+            locationName,
+          };
+        })
+      );
+      setEvents(enriched);
+    } catch (err: any) {
+      console.error(err);
+      Alert.alert('Erreur', 'Échec récupération du panier');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const renderEventItem = ({
-    item,
-    index,
-  }: {
-    item: (typeof MOCK_EVENTS)[0];
-    index: number;
-  }) => {
-    // Recherche du lieu correspondant à l'événement
-    const location = MOCK_LOCATIONS.find((loc) => loc.id === item.location_id);
+  // Fetch au focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchCart();
+      setCashbackValidated(false);
+      setUseCashback(false);
+      setCashbackToUse('0');
+    }, [userId])
+  );
 
-    return (
-      <MotiView
-        from={{ opacity: 0, translateY: 10 }}
-        animate={{ opacity: 1, translateY: 0 }}
-        transition={{ delay: index * 100 }}
-        style={styles.card}
-      >
-        <View style={styles.cardHeader}>
-          <Text style={styles.itemName}>{item.name}</Text>
-          <Text style={styles.itemPrice}>{item.price.toFixed(0)} €</Text>
-        </View>
-        <Text style={styles.eventDate}>{formatDate(item.start_date)}</Text>
-        {location && (
-          <View style={styles.addressContainer}>
-            <Text style={styles.eventLocation}>
-              {location.address}, {location.city} {location.zipcode}
-            </Text>
-            <TouchableOpacity
-              onPress={() => removeEvent(item.id)}
-              style={styles.deleteButton}
-            >
-              <TrashIcon color={Colors.error} size={20} />
-            </TouchableOpacity>
-          </View>
-        )}
-      </MotiView>
-    );
+  // WebSocket updates
+  useEffect(() => {
+    if (!socketRef.current || !userId) return;
+    const handler = (data: any) => {
+      setEvents(
+        data.items.map((it: any) => ({
+          id: it.event._id,
+          name: it.event.name,
+          price: it.price,
+          start_date: it.event.start_date,
+          locationName: '',
+        }))
+      );
+      fetchCart();
+    };
+    socketRef.current.on('cartUpdated', handler);
+    return () => {
+      socketRef.current.off('cartUpdated', handler);
+    };
+  }, [socketRef, userId]);
+
+  // Supprimer un item
+  const removeEvent = async (eventId: string) => {
+    if (!userId) return;
+    try {
+      const res = await fetch(`${apiConfig.baseURL}/api/cart/remove`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, eventId }),
+      });
+      if (!res.ok) throw new Error('Échec suppression');
+      setEvents((ev) => ev.filter((e) => e.id !== eventId));
+    } catch (err: any) {
+      console.error(err);
+      Alert.alert('Erreur', err.message);
+    }
   };
 
-  // Calcul du montant total
-  const totalAmount = events.reduce((total, item) => total + item.price, 0);
+  if (loading) return <LoadingContainer />;
+
+  // Totaux
+  const totalAmount = events.reduce((sum, e) => sum + e.price, 0);
+  const maxCashback = Math.min(cashbackBalance, totalAmount);
+  const used = useCashback ? parseFloat(cashbackToUse) || 0 : 0;
+  const finalAmount = Math.max(0, totalAmount - used);
+
+  // Validation cashback
+  const validateCashback = () => {
+    const amt = parseFloat(cashbackToUse);
+    if (isNaN(amt) || amt <= 0) {
+      Alert.alert('Erreur', 'Saisissez un montant valide');
+    } else if (amt > maxCashback) {
+      Alert.alert(
+        'Erreur',
+        `Vous ne pouvez utiliser que ${maxCashback.toFixed(2)} €`
+      );
+    } else {
+      setCashbackValidated(true);
+    }
+  };
+
+  const renderItem = ({ item, index }: { item: any; index: number }) => (
+    <MotiView
+      from={{ opacity: 0, translateY: 10 }}
+      animate={{ opacity: 1, translateY: 0 }}
+      transition={{ delay: index * 100 }}
+      style={styles.card}
+    >
+      <View style={styles.cardHeader}>
+        <Text style={styles.itemName}>{item.name}</Text>
+        <Text style={styles.itemPrice}>{item.price.toFixed(0)} €</Text>
+      </View>
+      <Text style={styles.eventDate}>{formatDate(item.start_date)}</Text>
+      <View style={styles.addressContainer}>
+        <Text style={styles.locationText}>{item.locationName}</Text>
+        <TouchableOpacity
+          onPress={() => removeEvent(item.id)}
+          style={styles.deleteButton}
+        >
+          <TrashIcon color={Colors.error} size={20} />
+        </TouchableOpacity>
+      </View>
+    </MotiView>
+  );
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Mon Panier</Text>
       </View>
+
       <FlatList
         data={events}
-        keyExtractor={(item) => item.id}
-        renderItem={renderEventItem}
+        keyExtractor={(i) => i.id}
+        renderItem={renderItem}
         contentContainerStyle={styles.cartList}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <ShoppingBagIcon
-              color={Colors.gray400}
-              size={60}
-              style={styles.emptyIcon}
-            />
+            <ShoppingBagIcon color={Colors.gray400} size={60} />
             <Text style={styles.emptyText}>Votre panier est vide.</Text>
           </View>
         }
       />
+
       {events.length > 0 && (
         <View style={styles.footer}>
-          {/* Bouton pour afficher/masquer le récapitulatif */}
+          {/* Récapitulatif */}
           <TouchableOpacity
-            onPress={() => setRecapExpanded(!recapExpanded)}
+            onPress={() => setRecapExpanded((e) => !e)}
             style={styles.recapToggleContainer}
           >
             <Text style={styles.recapToggleText}>
@@ -227,30 +232,105 @@ export default function CartScreen() {
                 : 'Afficher le récapitulatif'}
             </Text>
           </TouchableOpacity>
-
-          {/* Récapitulatif collapsible */}
           {recapExpanded && (
             <View style={styles.priceRecapContainer}>
-              {events.map((item, index) => (
-                <View key={index} style={styles.priceRecapRow}>
-                  <Text style={styles.priceRecapLabel}>{item.name}</Text>
+              {events.map((e, i) => (
+                <View key={i} style={styles.priceRecapRow}>
+                  <Text style={styles.priceRecapLabel}>{e.name}</Text>
                   <Text style={styles.priceRecapAmount}>
-                    {item.price.toFixed(0)} €
+                    {e.price.toFixed(0)} €
                   </Text>
                 </View>
               ))}
             </View>
           )}
+
+          {/* Total avant cashback */}
           <View style={styles.totalContainer}>
             <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalAmount}>{totalAmount.toFixed(0)} €</Text>
+            <Text style={styles.totalAmount}>{totalAmount.toFixed(2)} €</Text>
           </View>
-          <TouchableOpacity
-            style={styles.checkoutButton}
-            onPress={() => router.push('/(payment)')}
-          >
-            <Text style={styles.checkoutButtonText}>Passer au paiement</Text>
-          </TouchableOpacity>
+
+          {/* Option cashback */}
+          <View style={styles.cashbackContainer}>
+            <Text style={styles.cashbackLabel}>
+              Cashback dispo : {cashbackBalance.toFixed(2)} €
+            </Text>
+            <TouchableOpacity
+              onPress={() => {
+                setUseCashback((u) => !u);
+                setCashbackValidated(false);
+                setCashbackToUse('0');
+              }}
+            >
+              <Text
+                style={[
+                  styles.cashbackToggle,
+                  useCashback && styles.cashbackOn,
+                ]}
+              >
+                {useCashback ? 'Annuler cashback' : 'Utiliser mon cashback'}
+              </Text>
+            </TouchableOpacity>
+            {useCashback && (
+              <>
+                <View style={styles.cashbackInputRow}>
+                  <TextInput
+                    style={styles.cashbackInput}
+                    keyboardType="decimal-pad"
+                    value={cashbackToUse}
+                    onChangeText={(t) => {
+                      const cleaned = t
+                        .replace(',', '.')
+                        .replace(/[^0-9.]/g, '');
+                      setCashbackToUse(cleaned);
+                    }}
+                    placeholder="Montant à utiliser"
+                  />
+                  <Text style={styles.cashbackMax}>
+                    / {maxCashback.toFixed(2)}
+                  </Text>
+                </View>
+                {!cashbackValidated && (
+                  <TouchableOpacity
+                    style={styles.validateButton}
+                    onPress={validateCashback}
+                  >
+                    <Text style={styles.validateButtonText}>
+                      Valider cashback
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            )}
+          </View>
+
+          {/* Total final */}
+          {useCashback && cashbackValidated && (
+            <View style={styles.finalContainer}>
+              <Text style={styles.finalLabel}>À payer</Text>
+              <Text style={styles.finalAmount}>{finalAmount.toFixed(2)} €</Text>
+            </View>
+          )}
+
+          {/* Bouton paiement */}
+          {(!useCashback || cashbackValidated) && (
+            <TouchableOpacity
+              style={styles.checkoutButton}
+              onPress={() =>
+                router.push({
+                  pathname: '/(payment)',
+                  params: {
+                    total: finalAmount,
+                    items: JSON.stringify(events),
+                    cashbackUsed: used,
+                  },
+                })
+              }
+            >
+              <Text style={styles.checkoutButtonText}>Passer au paiement</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
     </View>
@@ -258,10 +338,7 @@ export default function CartScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
+  container: { flex: 1, backgroundColor: Colors.background },
   header: {
     padding: 20,
     paddingTop: 80,
@@ -269,14 +346,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.gray100,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: Colors.text,
-  },
-  cartList: {
-    padding: 20,
-  },
+  title: { fontSize: 32, fontWeight: 'bold', color: Colors.text },
+  cartList: { padding: 20 },
   card: {
     backgroundColor: Colors.white,
     borderRadius: 16,
@@ -293,44 +364,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  infoContainer: {
-    flex: 1,
-  },
-  actionContainer: {
-    alignItems: 'flex-end',
-  },
-  itemName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.text,
-  },
-  eventDate: {
-    fontSize: 14,
-    color: Colors.gray600,
-    marginTop: 4,
-  },
-  itemPrice: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.text,
-  },
-  deleteButton: {
-    marginTop: 4,
-  },
+  itemName: { fontSize: 18, fontWeight: '600', color: Colors.text },
+  eventDate: { fontSize: 14, color: Colors.gray600, marginTop: 4 },
+  itemPrice: { fontSize: 16, fontWeight: '600', color: Colors.text },
   addressContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 12,
   },
-  eventLocation: {
-    fontSize: 14,
-    color: Colors.gray600,
-    marginTop: 12,
-  },
+  locationText: { fontSize: 14, color: Colors.gray600 },
+  deleteButton: { marginLeft: 12 },
   footer: {
     paddingHorizontal: 20,
-
     paddingBottom: 120,
     borderTopWidth: 1,
     borderTopColor: Colors.gray100,
@@ -343,57 +389,65 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.gray100,
     marginBottom: 8,
   },
-  recapToggleText: {
-    fontSize: 16,
-    color: Colors.accent,
-    fontWeight: '500',
-  },
-  priceRecapContainer: {
-    marginBottom: 8,
-  },
+  recapToggleText: { fontSize: 16, color: Colors.accent, fontWeight: '500' },
+  priceRecapContainer: { marginBottom: 8 },
   priceRecapRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    marginBottom: 4,
   },
-  priceRecapLabel: {
-    fontSize: 14,
-    color: Colors.gray600,
-  },
-  priceRecapAmount: {
-    fontSize: 14,
-    color: Colors.gray600,
-    textAlign: 'right',
-  },
+  priceRecapLabel: { fontSize: 14, color: Colors.gray600 },
+  priceRecapAmount: { fontSize: 14, color: Colors.gray600 },
   totalContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
-    marginTop: 12,
+    marginVertical: 12,
   },
-  totalLabel: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.text,
+  totalLabel: { fontSize: 20, fontWeight: 'bold', color: Colors.text },
+  totalAmount: { fontSize: 20, fontWeight: 'bold', color: Colors.text },
+  cashbackContainer: { marginVertical: 12 },
+  cashbackLabel: { fontSize: 14, color: Colors.gray600 },
+  cashbackToggle: { marginTop: 6, fontSize: 16, color: Colors.accent },
+  cashbackOn: { color: Colors.primary },
+  cashbackInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
   },
-  totalAmount: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.text,
-    textAlign: 'right',
+  cashbackInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: Colors.gray300,
+    borderRadius: 6,
+    padding: 8,
+    fontSize: 16,
   },
+  cashbackMax: { marginLeft: 8, fontSize: 14, color: Colors.gray600 },
+  validateButton: {
+    marginTop: 10,
+    backgroundColor: Colors.accent,
+    padding: 12,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  validateButtonText: { color: Colors.white, fontSize: 16, fontWeight: '600' },
+  finalContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginVertical: 12,
+  },
+  finalLabel: { fontSize: 18, color: Colors.text },
+  finalAmount: { fontSize: 18, fontWeight: 'bold', color: Colors.text },
   checkoutButton: {
+    marginTop: 12,
     backgroundColor: Colors.accent,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
   },
-  checkoutButtonText: {
-    color: Colors.white,
-    fontSize: 24,
-    fontWeight: '600',
-  },
+  checkoutButtonText: { color: Colors.white, fontSize: 24, fontWeight: '600' },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -401,11 +455,6 @@ const styles = StyleSheet.create({
     padding: 40,
     paddingTop: 235,
   },
-  emptyIcon: {
-    marginBottom: 16,
-  },
-  emptyText: {
-    fontSize: 18,
-    color: Colors.gray600,
-  },
+  emptyIcon: { marginBottom: 16 },
+  emptyText: { fontSize: 18, color: Colors.gray600 },
 });

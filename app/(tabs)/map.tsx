@@ -69,13 +69,13 @@ function getIconForEventType(
 export default function MapScreen() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
+  const now = new Date();
   const [loading, setLoading] = useState(true);
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(
     null
   );
   const [selectedType, setSelectedType] = useState('Tous');
 
-  // Récupération des lieux et des événements
   useEffect(() => {
     const fetchLocations = async () => {
       try {
@@ -106,28 +106,20 @@ export default function MapScreen() {
     });
   }, []);
 
-  // Récupérer les événements d'un lieu
   const getEventsAtLocation = (locationId: string) => {
-    return events.filter((event) => event.location_id === locationId);
+    return events.filter(
+      (event) =>
+        event.location_id === locationId && new Date(event.start_date) >= now // ⇐ uniquement futurs
+    );
   };
 
-  // Filtrer les lieux en fonction du type sélectionné
-  const filteredLocations = locations.filter((location) => {
-    const eventsAtLocation = getEventsAtLocation(
-      location._id || location.id || ''
-    );
+  const filteredLocations = locations.filter((loc) => {
+    const evs = getEventsAtLocation(loc._id || loc.id || '');
     if (selectedType === 'Tous') return true;
-    return eventsAtLocation.some(
-      (event) => event.event_type.toLowerCase() === selectedType.toLowerCase()
+    return evs.some(
+      (e) => e.event_type.toLowerCase() === selectedType.toLowerCase()
     );
   });
-
-  // Récupérer les types d'événement d'un lieu
-  const getEventTypesForLocation = (locationId: string) => {
-    return events
-      .filter((event) => event.location_id === locationId)
-      .map((e) => e.event_type.toLowerCase());
-  };
 
   if (loading) {
     return (
@@ -142,25 +134,26 @@ export default function MapScreen() {
       <MapView
         style={styles.map}
         initialRegion={{
-          latitude: 50.63123052834233,
-          longitude: 3.0524002455006882,
+          latitude: 50.63123,
+          longitude: 3.0524,
           latitudeDelta: 0.0922,
           longitudeDelta: 0.0421,
         }}
       >
-        {filteredLocations.map((location) => {
-          const locationId = location._id || location.id;
-          if (!locationId) return null;
-          const eventTypes = getEventTypesForLocation(locationId);
-
+        {filteredLocations.map((loc) => {
+          const locId = loc._id || loc.id;
+          if (!locId) return null;
+          const types = getEventsAtLocation(locId).map((e) =>
+            e.event_type.toLowerCase()
+          );
           return (
             <Marker
-              key={locationId}
+              key={locId}
               coordinate={{
-                latitude: location.latitude,
-                longitude: location.longitude,
+                latitude: loc.latitude,
+                longitude: loc.longitude,
               }}
-              onPress={() => setSelectedLocation(location)}
+              onPress={() => setSelectedLocation(loc)}
             >
               <AnimatePresence>
                 <MotiView
@@ -170,19 +163,19 @@ export default function MapScreen() {
                   transition={{ duration: 300, delay: 100 }}
                 >
                   <View style={styles.markerContainer}>
-                    {getIconForEventType(eventTypes, 24, Colors.primary)}
+                    {getIconForEventType(types, 24, Colors.primary)}
                   </View>
                 </MotiView>
               </AnimatePresence>
               <Callout>
                 <View style={styles.callout}>
                   <Text style={styles.calloutTitle}>
-                    {location.name || 'Lieu sans nom'}
+                    {loc.name || 'Lieu sans nom'}
                   </Text>
                   <Text style={styles.calloutAddress}>
-                    {location.address}
+                    {loc.address}
                     {'\n'}
-                    {location.city} {location.zipcode}
+                    {loc.city} {loc.zipcode}
                   </Text>
                 </View>
               </Callout>
@@ -245,18 +238,19 @@ export default function MapScreen() {
             {getEventsAtLocation(
               selectedLocation._id || selectedLocation.id || ''
             ).length === 0 ? (
-              <Text style={styles.noEventText}>Aucun événement Actif</Text>
+              <Text style={styles.noEventText}>Aucun événement actif</Text>
             ) : (
               <>
                 <Text style={styles.eventsTitle}>Événements Actifs</Text>
                 {getEventsAtLocation(
                   selectedLocation._id || selectedLocation.id || ''
-                ).map((event) => {
-                  const eventId = event._id || event.id;
+                ).map((ev) => {
+                  const evId = ev._id || ev.id;
+                  const soldOut = ev.remaining_participants === 0;
                   return (
-                    <View key={eventId} style={styles.eventCard}>
+                    <View key={evId} style={styles.eventCard}>
                       <View style={styles.eventInfo}>
-                        <Text style={styles.eventName}>{event.name}</Text>
+                        <Text style={styles.eventName}>{ev.name}</Text>
                         <View style={styles.participantsContainer}>
                           <Ionicons
                             name="people"
@@ -264,19 +258,29 @@ export default function MapScreen() {
                             color={Colors.primary}
                           />
                           <Text style={styles.participantsText}>
-                            {event.remaining_participants} places restantes
+                            {ev.remaining_participants} places restantes
                           </Text>
                         </View>
                       </View>
                       <TouchableOpacity
-                        style={styles.joinButton}
+                        style={[
+                          styles.joinButton,
+                          soldOut && styles.disabledJoinButton,
+                        ]}
                         onPress={() =>
-                          router.push(
-                            `/(events)/event/${event._id || event.id}`
-                          )
+                          !soldOut &&
+                          router.push(`/(events)/event/${ev._id || ev.id}`)
                         }
+                        disabled={soldOut}
                       >
-                        <Text style={styles.joinButtonText}>Participer</Text>
+                        <Text
+                          style={[
+                            styles.joinButtonText,
+                            soldOut && styles.disabledJoinButtonText,
+                          ]}
+                        >
+                          {soldOut ? 'Complet' : 'Participer'}
+                        </Text>
                       </TouchableOpacity>
                     </View>
                   );
@@ -451,5 +455,11 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 14,
     fontWeight: '600',
+  },
+  disabledJoinButton: {
+    backgroundColor: Colors.gray300,
+  },
+  disabledJoinButtonText: {
+    color: Colors.gray500,
   },
 });

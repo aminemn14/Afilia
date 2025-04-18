@@ -27,7 +27,7 @@ const EVENT_TYPES = [
   'Chorale',
 ];
 
-function getLocationById(locationId: any, locations: any[]) {
+function getLocationById(locationId: string, locations: any[]) {
   return locations.find(
     (loc) => loc._id === locationId || loc.id === locationId
   );
@@ -39,25 +39,14 @@ export default function HomeScreen() {
   const [firstName, setFirstName] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState('Tous');
-  const [events, setEvents] = useState<
-    {
-      name: string;
-      event_type: string;
-      location_id: string;
-      remaining_participants: number;
-      _id?: string;
-      id?: string;
-    }[]
-  >([]);
-  const [locations, setLocations] = useState<
-    { address: string; city: string; _id?: string; id?: string }[]
-  >([]);
+  const [events, setEvents] = useState<any[]>([]);
+  const [locations, setLocations] = useState<any[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [loadingLocations, setLoadingLocations] = useState(false);
+  const now = new Date();
 
-  // Récupération des informations de l'utilisateur
   useEffect(() => {
-    const fetchUserData = async () => {
+    (async () => {
       try {
         const userString = await AsyncStorage.getItem('user');
         if (userString) {
@@ -71,26 +60,16 @@ export default function HomeScreen() {
           error
         );
       }
-    };
-    fetchUserData();
+    })();
   }, []);
 
-  // Récupération des événements depuis l'API
   useEffect(() => {
-    const fetchEvents = async () => {
+    (async () => {
       try {
         setLoadingEvents(true);
-        const response = await axios.get<
-          {
-            name: string;
-            event_type: string;
-            location_id: string;
-            remaining_participants: number;
-            _id?: string;
-            id?: string;
-          }[]
-        >(`${apiConfig.baseURL}/api/events`);
-        console.log('Events fetched:', response.data);
+        const response = await axios.get<any[]>(
+          `${apiConfig.baseURL}/api/events`
+        );
         setEvents(response.data);
       } catch (err) {
         console.error('Erreur lors de la récupération des événements :', err);
@@ -98,19 +77,16 @@ export default function HomeScreen() {
       } finally {
         setLoadingEvents(false);
       }
-    };
-    fetchEvents();
+    })();
   }, []);
 
-  // Récupération des lieux depuis l'API
   useEffect(() => {
-    const fetchLocations = async () => {
+    (async () => {
       try {
         setLoadingLocations(true);
-        const response = await axios.get<
-          { address: string; city: string; _id?: string; id?: string }[]
-        >(`${apiConfig.baseURL}/api/locations`);
-        console.log('Locations fetched:', response.data);
+        const response = await axios.get<any[]>(
+          `${apiConfig.baseURL}/api/locations`
+        );
         setLocations(response.data);
       } catch (err) {
         console.error('Erreur lors de la récupération des lieux :', err);
@@ -118,36 +94,26 @@ export default function HomeScreen() {
       } finally {
         setLoadingLocations(false);
       }
-    };
-    fetchLocations();
+    })();
   }, []);
 
-  // Filtre des événements en fonction de la recherche et du type sélectionné
   const filteredEvents = events.filter((event) => {
+    if (new Date(event.start_date) < now) return false;
+
     const matchesSearch = event.name
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
     const matchesType =
       selectedType === 'Tous' ||
       event.event_type.toLowerCase() === selectedType.toLowerCase();
+
     return matchesSearch && matchesType;
   });
 
-  const renderEventCard = ({
-    item,
-    index,
-  }: {
-    item: {
-      name: string;
-      event_type: string;
-      location_id: string;
-      remaining_participants: number;
-      _id?: string;
-      id?: string;
-    };
-    index: number;
-  }) => {
+  const renderEventCard = ({ item, index }: { item: any; index: number }) => {
     const location = getLocationById(item.location_id, locations);
+    const soldOut = item.remaining_participants === 0;
+
     return (
       <MotiView
         from={{ opacity: 0, scale: 0.9 }}
@@ -173,10 +139,22 @@ export default function HomeScreen() {
           </Text>
         )}
         <TouchableOpacity
-          style={styles.joinButton}
-          onPress={() => router.push(`/(events)/event/${item._id || item.id}`)}
+          style={[styles.joinButton, soldOut && styles.disabledJoinButton]}
+          onPress={() => {
+            if (!soldOut) {
+              router.push(`/(events)/event/${item._id || item.id}`);
+            }
+          }}
+          disabled={soldOut}
         >
-          <Text style={styles.joinButtonText}>Participer</Text>
+          <Text
+            style={[
+              styles.joinButtonText,
+              soldOut && styles.disabledJoinButtonText,
+            ]}
+          >
+            {soldOut ? 'Complet' : 'Participer'}
+          </Text>
         </TouchableOpacity>
       </MotiView>
     );
@@ -191,7 +169,7 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={styles.title}>Bienvenue {firstName} !</Text>
-          {user && user.role === 'admin' && (
+          {user?.role === 'admin' && (
             <TouchableOpacity
               style={styles.newEventButton}
               onPress={() => router.push('/(admin)/addLocation')}
@@ -398,5 +376,11 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 16,
     fontWeight: '600',
+  },
+  disabledJoinButton: {
+    backgroundColor: Colors.gray300,
+  },
+  disabledJoinButtonText: {
+    color: Colors.gray500,
   },
 });
