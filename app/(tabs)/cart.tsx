@@ -252,58 +252,63 @@ export default function CartScreen() {
           </View>
 
           {/* Option cashback */}
-          <View style={styles.cashbackContainer}>
-            <Text style={styles.cashbackLabel}>
-              Cashback dispo : {cashbackBalance.toFixed(2)} €
-            </Text>
-            <TouchableOpacity
-              onPress={() => {
-                setUseCashback((u) => !u);
-                setCashbackValidated(false);
-                setCashbackToUse('0');
-              }}
-            >
-              <Text
-                style={[
-                  styles.cashbackToggle,
-                  useCashback && styles.cashbackOn,
-                ]}
-              >
-                {useCashback ? 'Annuler cashback' : 'Utiliser mon cashback'}
+          {cashbackBalance > 0 && (
+            <View style={styles.cashbackContainer}>
+              <Text style={styles.cashbackLabel}>
+                Cashback dispo : {cashbackBalance.toFixed(2)} €
               </Text>
-            </TouchableOpacity>
-            {useCashback && (
-              <>
-                <View style={styles.cashbackInputRow}>
-                  <TextInput
-                    style={styles.cashbackInput}
-                    keyboardType="decimal-pad"
-                    value={cashbackToUse}
-                    onChangeText={(t) => {
-                      const cleaned = t
-                        .replace(',', '.')
-                        .replace(/[^0-9.]/g, '');
-                      setCashbackToUse(cleaned);
-                    }}
-                    placeholder="Montant à utiliser"
-                  />
-                  <Text style={styles.cashbackMax}>
-                    / {maxCashback.toFixed(2)}
-                  </Text>
-                </View>
-                {!cashbackValidated && (
-                  <TouchableOpacity
-                    style={styles.validateButton}
-                    onPress={validateCashback}
-                  >
-                    <Text style={styles.validateButtonText}>
-                      Valider cashback
+
+              <TouchableOpacity
+                onPress={() => {
+                  setUseCashback((u) => !u);
+                  setCashbackValidated(false);
+                  setCashbackToUse('0');
+                }}
+              >
+                <Text
+                  style={[
+                    styles.cashbackToggle,
+                    useCashback && styles.cashbackOn,
+                  ]}
+                >
+                  {useCashback ? 'Annuler cashback' : 'Utiliser mon cashback'}
+                </Text>
+              </TouchableOpacity>
+
+              {useCashback && (
+                <>
+                  <View style={styles.cashbackInputRow}>
+                    <TextInput
+                      style={styles.cashbackInput}
+                      keyboardType="decimal-pad"
+                      value={cashbackToUse}
+                      onChangeText={(t) => {
+                        const cleaned = t
+                          .replace(',', '.')
+                          .replace(/[^0-9.]/g, '');
+                        setCashbackToUse(cleaned);
+                      }}
+                      placeholder="Montant à utiliser"
+                    />
+                    <Text style={styles.cashbackMax}>
+                      / {maxCashback.toFixed(2)}
                     </Text>
-                  </TouchableOpacity>
-                )}
-              </>
-            )}
-          </View>
+                  </View>
+
+                  {!cashbackValidated && (
+                    <TouchableOpacity
+                      style={styles.validateButton}
+                      onPress={validateCashback}
+                    >
+                      <Text style={styles.validateButtonText}>
+                        Valider cashback
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </>
+              )}
+            </View>
+          )}
 
           {/* Total final */}
           {useCashback && cashbackValidated && (

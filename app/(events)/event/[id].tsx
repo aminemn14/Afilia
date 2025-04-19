@@ -90,8 +90,12 @@ export default function EventDetailScreen() {
         return;
       }
       Alert.alert('Succès', 'Événement ajouté au panier 🎉', [
-        { text: 'Voir mon panier', onPress: () => router.push('/cart') },
-        { text: 'Rester ici', style: 'cancel' },
+        {
+          text: 'Voir mon panier',
+          onPress: () => router.push('/cart'),
+          style: 'cancel',
+        },
+        { text: 'Rester ici' },
       ]);
     } catch (err: any) {
       console.error(err);
