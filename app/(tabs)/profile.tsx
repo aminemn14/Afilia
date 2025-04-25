@@ -102,9 +102,9 @@ export default function ProfileScreen() {
     socketRef.current.on('cashbackUpdated', onCashbackUpdated);
 
     return () => {
-      socketRef.current.off('invitationReceived', onInvitationReceived);
-      socketRef.current.off('invitationUpdated', onInvitationUpdated);
-      socketRef.current.off('cashbackUpdated', onCashbackUpdated);
+      socketRef.current?.off('invitationReceived', onInvitationReceived);
+      socketRef.current?.off('invitationUpdated', onInvitationUpdated);
+      socketRef.current?.off('cashbackUpdated', onCashbackUpdated);
     };
   }, [socketRef, user]);
 

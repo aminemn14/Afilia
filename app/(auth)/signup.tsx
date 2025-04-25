@@ -155,7 +155,11 @@ export default function SignUpScreen() {
       extraScrollHeight={20}
       enableOnAndroid={true}
     >
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+      <TouchableOpacity
+        style={styles.backButton}
+        testID="back-button"
+        onPress={() => router.back()}
+      >
         <Ionicons name="chevron-back" size={28} color={Colors.primary} />
       </TouchableOpacity>
 

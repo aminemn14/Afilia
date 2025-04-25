@@ -18,13 +18,13 @@ import LoadingContainer from '../components/LoadingContainer';
 import apiConfig from '@/config/apiConfig';
 import useSocket from '../hooks/useSocket';
 
-const formatDate = (dateString: string): string => {
+export function formatDate(dateString: string): string {
   const date = new Date(dateString);
   const dd = date.getDate().toString().padStart(2, '0');
   const mm = (date.getMonth() + 1).toString().padStart(2, '0');
   const yy = date.getFullYear().toString().slice(-2);
   return `${dd}/${mm}/${yy}`;
-};
+}
 
 export default function CartScreen() {
   const router = useRouter();
@@ -132,7 +132,7 @@ export default function CartScreen() {
     };
     socketRef.current.on('cartUpdated', handler);
     return () => {
-      socketRef.current.off('cartUpdated', handler);
+      socketRef.current?.off('cartUpdated', handler);
     };
   }, [socketRef, userId]);
 

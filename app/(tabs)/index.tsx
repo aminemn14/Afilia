@@ -27,7 +27,7 @@ const EVENT_TYPES = [
   'Chorale',
 ];
 
-function getLocationById(locationId: string, locations: any[]) {
+export function getLocationById(locationId: string, locations: any[]) {
   return locations.find(
     (loc) => loc._id === locationId || loc.id === locationId
   );

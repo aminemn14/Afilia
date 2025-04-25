@@ -257,12 +257,14 @@ const ChatConversation = () => {
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
+            testID="back-button"
             style={styles.backButton}
           >
             <Ionicons name="chevron-back" size={28} color={Colors.text} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.profileHeader}
+            testID="profile-header"
             onPress={goToUserProfile}
           >
             <Image
@@ -316,7 +318,11 @@ const ChatConversation = () => {
             value={inputMessage}
             onChangeText={setInputMessage}
           />
-          <TouchableOpacity onPress={sendMessage} style={styles.sendButton}>
+          <TouchableOpacity
+            onPress={sendMessage}
+            testID="send-button"
+            style={styles.sendButton}
+          >
             <Ionicons name="send" size={24} color={Colors.white} />
           </TouchableOpacity>
         </View>
