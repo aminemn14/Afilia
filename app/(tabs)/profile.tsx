@@ -282,6 +282,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.error,
     marginHorizontal: 20,
     paddingVertical: 16,
+    marginTop: 10,
     borderRadius: 12,
     alignItems: 'center',
     marginBottom: 40,

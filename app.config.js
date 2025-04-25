@@ -14,8 +14,6 @@ export default {
       supportsTablet: true,
     },
     extra: {
-      supabaseUrl: process.env.SUPABASE_URL,
-      supabaseAnonKey: process.env.SUPABASE_ANON_KEY,
       apiBaseUrl: process.env.API_BASE_URL,
     },
     web: {

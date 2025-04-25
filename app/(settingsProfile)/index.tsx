@@ -15,7 +15,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import Colors from '../constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '@/lib/supabaseClient';
 import * as FileSystem from 'expo-file-system';
 import apiConfig from '@/config/apiConfig';
 
