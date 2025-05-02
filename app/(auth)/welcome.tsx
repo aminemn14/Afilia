@@ -56,6 +56,9 @@ export default function WelcomeScreen() {
               S'inscrire
             </Text>
           </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/(tabs)')}>
+            <Text style={styles.withoutText}>Continuer sans s'identifier</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </SafeAreaView>
@@ -136,10 +139,20 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: Colors.primary,
   },
+  withoutLoginButton: {
+    color: Colors.primary,
+  },
   buttonText: {
     fontSize: 18,
     fontWeight: '600',
     color: Colors.white,
+  },
+  withoutText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.primary,
+    textAlign: 'center',
+    marginTop: 5,
   },
   signupButtonText: {
     color: Colors.primary,

@@ -36,7 +36,8 @@ export function getLocationById(locationId: string, locations: any[]) {
 export default function HomeScreen() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
-  const [firstName, setFirstName] = useState<string | null>(null);
+  const [firstName, setFirstName] = useState<string>('Visiteur');
+  const [loadingUser, setLoadingUser] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState('Tous');
   const [events, setEvents] = useState<any[]>([]);
@@ -59,6 +60,8 @@ export default function HomeScreen() {
           'Erreur lors de la récupération des infos utilisateur',
           error
         );
+      } finally {
+        setLoadingUser(false);
       }
     })();
   }, []);
@@ -160,7 +163,7 @@ export default function HomeScreen() {
     );
   };
 
-  if (firstName === null || loadingEvents || loadingLocations) {
+  if (loadingUser || loadingEvents || loadingLocations) {
     return <LoadingContainer />;
   }
 
@@ -168,7 +171,9 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <Text style={styles.title}>Bienvenue {firstName} !</Text>
+          <Text style={styles.title}>
+            {user ? `Bienvenue ${firstName} !` : 'Bienvenue sur Afilia !'}
+          </Text>
           {user?.role === 'admin' && (
             <TouchableOpacity
               style={styles.newEventButton}

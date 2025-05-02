@@ -7,37 +7,44 @@ import {
   Image,
   TouchableOpacity,
   Alert,
+  Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useFocusEffect } from 'expo-router';
-import Colors from '../constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
+import Colors from '../constants/Colors';
 import apiConfig from '@/config/apiConfig';
 import useSocket from '../hooks/useSocket';
 import LoadingContainer from '../components/LoadingContainer';
 
 export default function ProfileScreen() {
   const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   const [invitationCount, setInvitationCount] = useState(0);
   const [cashback, setCashback] = useState<number>(0);
   const router = useRouter();
   const socketRef = useSocket();
 
-  // Récupère userId depuis AsyncStorage
+  // Load stored user
   const loadStoredUser = async () => {
     const json = await AsyncStorage.getItem('user');
     if (!json) return null;
     return JSON.parse(json);
   };
 
-  // Charge les données utilisateur depuis l'API
+  // Fetch user data
   const fetchUserData = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const stored = await loadStoredUser();
-      if (!stored) return;
+      if (!stored) {
+        setLoading(false);
+        return;
+      }
       const userId = stored._id || stored.id;
 
-      // Récupère le profil à jour
       const profileRes = await fetch(
         `${apiConfig.baseURL}/api/users/${userId}`
       );
@@ -46,7 +53,6 @@ export default function ProfileScreen() {
       setUser(profile);
       setCashback(profile.cashbackBalance ?? 0);
 
-      // Récupère les invitations en attente
       const invRes = await fetch(
         `${apiConfig.baseURL}/api/invitations?receiverId=${userId}&status=pending`
       );
@@ -55,37 +61,97 @@ export default function ProfileScreen() {
         setInvitationCount(Array.isArray(inv) ? inv.length : 0);
       }
 
-      // Rejoint la room socket
       socketRef.current?.emit('joinRoom', userId);
-
-      // Met à jour AsyncStorage pour garder le profil en local
       await AsyncStorage.setItem('user', JSON.stringify(profile));
     } catch (err: any) {
       console.error('Erreur récupération utilisateur', err);
-      Alert.alert('Erreur', err.message);
+      setError(err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Rafraîchit à chaque focus
+  // Handle account deletion
+  const handleDeleteAccount = () => {
+    const promptFunction = () => {
+      Alert.prompt(
+        'Supprimer mon compte',
+        'Entrez votre mot de passe pour confirmer la suppression.',
+        [
+          { text: 'Annuler', style: 'cancel' },
+          {
+            text: 'Supprimer',
+            style: 'destructive',
+            onPress: async (password) => {
+              try {
+                const stored = await loadStoredUser();
+                const userId = stored?._id || stored?.id;
+                const token = await AsyncStorage.getItem('token');
+                const res = await fetch(
+                  `${apiConfig.baseURL}/api/users/${userId}`,
+                  {
+                    method: 'DELETE',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      Authorization: token ? `Bearer ${token}` : '',
+                    },
+                    body: JSON.stringify({ password }),
+                  }
+                );
+                if (!res.ok) {
+                  const errBody = await res.json();
+                  throw new Error(errBody.error || 'Erreur suppression');
+                }
+                // Clear storage and redirect
+                await AsyncStorage.removeItem('token');
+                await AsyncStorage.removeItem('user');
+                router.replace('/(auth)/welcome');
+              } catch (err: any) {
+                console.error('Erreur suppression compte', err);
+                Alert.alert('Erreur', err.message);
+              }
+            },
+          },
+        ],
+        'secure-text'
+      );
+    };
+
+    // iOS supports Alert.prompt; Android fallback
+    if (Platform.OS === 'ios') {
+      promptFunction();
+    } else {
+      // Android: simple prompt via Alert + custom modal could be implemented
+      promptFunction();
+    }
+  };
+
+  // Logout
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.removeItem('token');
+      await AsyncStorage.removeItem('user');
+      router.replace('/(auth)/welcome');
+    } catch {
+      Alert.alert('Erreur', 'Impossible de se déconnecter, réessayez.');
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       fetchUserData();
     }, [socketRef])
   );
 
-  // Écoute les événements socket
   useEffect(() => {
     if (!socketRef.current) return;
-
     const onInvitationReceived = () => setInvitationCount((c) => c + 1);
     const onInvitationUpdated = () =>
       setInvitationCount((c) => Math.max(0, c - 1));
     const onCashbackUpdated = (data: any) => {
-      // data: { userId, newCashbackBalance }
-      const stored = user?._id || user?.id;
-      if (data.userId === stored) {
+      const storedId = user?._id || user?.id;
+      if (data.userId === storedId) {
         setCashback(data.newCashbackBalance);
-        // met à jour le profil en mémoire et AsyncStorage
         setUser((u: any) => ({
           ...u,
           cashbackBalance: data.newCashbackBalance,
@@ -96,11 +162,9 @@ export default function ProfileScreen() {
         ).catch(console.error);
       }
     };
-
     socketRef.current.on('invitationReceived', onInvitationReceived);
     socketRef.current.on('invitationUpdated', onInvitationUpdated);
     socketRef.current.on('cashbackUpdated', onCashbackUpdated);
-
     return () => {
       socketRef.current?.off('invitationReceived', onInvitationReceived);
       socketRef.current?.off('invitationUpdated', onInvitationUpdated);
@@ -108,20 +172,39 @@ export default function ProfileScreen() {
     };
   }, [socketRef, user]);
 
-  const handleLogout = async () => {
-    try {
-      await AsyncStorage.removeItem('token');
-      await AsyncStorage.removeItem('user');
-      router.replace('/welcome');
-    } catch (err) {
-      Alert.alert('Erreur', 'Impossible de se déconnecter, réessayez.');
-    }
-  };
+  if (loading) {
+    return (
+      <View style={styles.blockContainer}>
+        <LoadingContainer />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.blockContainer}>
+        <Text style={styles.errorText}>Erreur : {error.message}</Text>
+      </View>
+    );
+  }
 
   if (!user) {
     return (
-      <View style={styles.loadingContainer}>
-        <LoadingContainer />
+      <View style={styles.mustConnectContainer}>
+        <Ionicons
+          name="alert-circle-outline"
+          size={60}
+          color={Colors.gray400}
+        />
+        <Text style={styles.mustConnectText}>
+          Vous devez vous connecter pour accéder à votre profil.
+        </Text>
+        <TouchableOpacity
+          style={styles.connectButton}
+          onPress={() => router.replace('/(auth)/welcome')}
+        >
+          <Text style={styles.connectButtonText}>Se connecter</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -175,7 +258,7 @@ export default function ProfileScreen() {
           <Text style={styles.infoValue}>{user.bio || 'Aucune bio'}</Text>
         </View>
         {/* Cashback */}
-        <View style={styles.infoItem}>
+        <View style={styles.infoLastItem}>
           <Text style={styles.infoLabel}>Cashback cumulé</Text>
           <Text style={styles.infoValue}>{cashback.toFixed(2)} €</Text>
         </View>
@@ -198,20 +281,49 @@ export default function ProfileScreen() {
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
         <Text style={styles.logoutButtonText}>Déconnexion</Text>
       </TouchableOpacity>
+
+      <TouchableOpacity onPress={handleDeleteAccount}>
+        <Text style={styles.deleteAccountText}>Supprimer mon compte</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  loadingContainer: {
+  blockContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
+  },
+  errorText: { color: Colors.error, fontSize: 18 },
+  mustConnectContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  mustConnectText: {
+    textAlign: 'center',
+    fontSize: 18,
+    color: Colors.gray600,
+    marginVertical: 20,
+  },
+  connectButton: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  connectButtonText: {
+    color: Colors.white,
+    fontSize: 18,
+    fontWeight: '700',
   },
   header: {
     backgroundColor: Colors.primary,
-    height: 140,
+    height: 130,
     paddingHorizontal: 20,
     paddingTop: 40,
     flexDirection: 'row',
@@ -254,7 +366,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 16,
     marginHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 10,
     shadowColor: Colors.text,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -263,6 +375,7 @@ const styles = StyleSheet.create({
   },
   noMargin: { marginBottom: 10 },
   infoItem: { marginBottom: 20 },
+  infoLastItem: { marginBottom: 0 },
   infoLabel: { fontSize: 12, color: Colors.gray600, marginBottom: 4 },
   infoValue: { fontSize: 16, fontWeight: 'bold', color: Colors.text },
   invitationContainer: {
@@ -285,7 +398,13 @@ const styles = StyleSheet.create({
     marginTop: 10,
     borderRadius: 12,
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 20,
   },
   logoutButtonText: { color: Colors.white, fontSize: 18, fontWeight: '600' },
+  deleteAccountText: {
+    textAlign: 'center',
+    fontSize: 16,
+    color: Colors.error,
+    marginBottom: 20,
+  },
 });

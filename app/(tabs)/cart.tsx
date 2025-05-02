@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
+  Button,
 } from 'react-native';
 import { MotiView } from 'moti';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,6 +32,7 @@ export default function CartScreen() {
   const socketRef = useSocket();
 
   const [userId, setUserId] = useState<string | null>(null);
+  const [loadingUser, setLoadingUser] = useState(true);
   const [cashbackBalance, setCashbackBalance] = useState<number>(0);
   const [useCashback, setUseCashback] = useState<boolean>(false);
   const [cashbackToUse, setCashbackToUse] = useState<string>('0');
@@ -48,16 +50,20 @@ export default function CartScreen() {
   const [loading, setLoading] = useState(true);
   const [recapExpanded, setRecapExpanded] = useState(false);
 
-  // Récupère userId + solde cashback
+  // Récupération de l'utilisateur et du solde cashback
   useEffect(() => {
     AsyncStorage.getItem('user')
       .then((json) => {
-        if (!json) return;
+        if (!json) {
+          setLoadingUser(false);
+          return;
+        }
         const u = JSON.parse(json);
         const id = u._id || u.id;
         setUserId(id);
         socketRef.current?.emit('joinRoom', id);
-        // fetch cashback
+        setLoadingUser(false);
+        // Récupérer le cashback
         fetch(`${apiConfig.baseURL}/api/users/${id}`)
           .then((r) => (r.ok ? r.json() : Promise.reject()))
           .then((uData) => setCashbackBalance(uData.cashbackBalance ?? 0))
@@ -68,7 +74,10 @@ export default function CartScreen() {
 
   // Fetch du panier
   const fetchCart = async () => {
-    if (!userId) return;
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch(`${apiConfig.baseURL}/api/cart/${userId}`);
@@ -105,7 +114,7 @@ export default function CartScreen() {
     }
   };
 
-  // Fetch au focus
+  // Fetch au focus de l'écran
   useFocusEffect(
     useCallback(() => {
       fetchCart();
@@ -115,7 +124,7 @@ export default function CartScreen() {
     }, [userId])
   );
 
-  // WebSocket updates
+  // Mises à jour via WebSocket
   useEffect(() => {
     if (!socketRef.current || !userId) return;
     const handler = (data: any) => {
@@ -136,7 +145,7 @@ export default function CartScreen() {
     };
   }, [socketRef, userId]);
 
-  // Supprimer un item
+  // Supprimer un item du panier
   const removeEvent = async (eventId: string) => {
     if (!userId) return;
     try {
@@ -153,15 +162,41 @@ export default function CartScreen() {
     }
   };
 
+  // 1. Tant que l'état utilisateur est en cours de chargement
+  if (loadingUser) return <LoadingContainer />;
+
+  // 2. Vue "invité" si non connecté
+  if (!userId) {
+    return (
+      <View style={styles.mustConnectContainer}>
+        <Ionicons
+          name="alert-circle-outline"
+          size={60}
+          color={Colors.gray400}
+        />
+        <Text style={styles.mustConnectText}>
+          Vous devez vous connecter pour accéder au panier.
+        </Text>
+        <TouchableOpacity
+          style={styles.connectButton}
+          onPress={() => router.replace('/(auth)/welcome')}
+        >
+          <Text style={styles.connectButtonText}>Se connecter</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // 3. Tant que le panier se charge
   if (loading) return <LoadingContainer />;
 
-  // Totaux
+  // Calculs des totaux
   const totalAmount = events.reduce((sum, e) => sum + e.price, 0);
   const maxCashback = Math.min(cashbackBalance, totalAmount);
   const used = useCashback ? parseFloat(cashbackToUse) || 0 : 0;
   const finalAmount = Math.max(0, totalAmount - used);
 
-  // Validation cashback
+  // Validation du cashback
   const validateCashback = () => {
     const amt = parseFloat(cashbackToUse);
     if (isNaN(amt) || amt <= 0) {
@@ -176,6 +211,7 @@ export default function CartScreen() {
     }
   };
 
+  // Rendu de chaque item
   const renderItem = ({ item, index }: { item: any; index: number }) => (
     <MotiView
       from={{ opacity: 0, translateY: 10 }}
@@ -460,6 +496,30 @@ const styles = StyleSheet.create({
     padding: 40,
     paddingTop: 235,
   },
+  mustConnectContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
   emptyIcon: { marginBottom: 16 },
   emptyText: { fontSize: 18, color: Colors.gray600 },
+
+  mustConnectText: {
+    textAlign: 'center',
+    fontSize: 18,
+    color: Colors.gray600,
+    marginVertical: 20,
+  },
+  connectButton: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  connectButtonText: {
+    color: Colors.white,
+    fontSize: 18,
+    fontWeight: '700',
+  },
 });

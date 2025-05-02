@@ -70,8 +70,24 @@ export default function EventDetailScreen() {
   }, [id]);
 
   const handleAddToCart = async () => {
-    if (!userId || !event) {
-      Alert.alert('Erreur', 'Utilisateur ou événement introuvable.');
+    // Si pas connecté, on propose de se connecter
+    if (!userId) {
+      Alert.alert(
+        'Erreur',
+        'Vous devez vous connecter pour ajouter cet événement.',
+        [
+          {
+            text: 'Se connecter',
+            onPress: () => router.replace('/(auth)/welcome'),
+          },
+          { text: 'Annuler', style: 'cancel' },
+        ]
+      );
+      return;
+    }
+    // Vérification événement
+    if (!event) {
+      Alert.alert('Erreur', 'Événement introuvable.');
       return;
     }
     try {
