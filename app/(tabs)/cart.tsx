@@ -11,7 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { MotiView } from 'moti';
-import { TrashIcon, ShoppingBagIcon } from 'react-native-heroicons/outline';
+import { Ionicons } from '@expo/vector-icons';
 import Colors from '../constants/Colors';
 import { useRouter } from 'expo-router';
 import LoadingContainer from '../components/LoadingContainer';
@@ -194,7 +194,7 @@ export default function CartScreen() {
           onPress={() => removeEvent(item.id)}
           style={styles.deleteButton}
         >
-          <TrashIcon color={Colors.error} size={20} />
+          <Ionicons name="trash-outline" size={20} color={Colors.error} />
         </TouchableOpacity>
       </View>
     </MotiView>
@@ -213,7 +213,7 @@ export default function CartScreen() {
         contentContainerStyle={styles.cartList}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <ShoppingBagIcon color={Colors.gray400} size={60} />
+            <Ionicons name="bag-outline" size={60} color={Colors.gray400} />
             <Text style={styles.emptyText}>Votre panier est vide.</Text>
           </View>
         }

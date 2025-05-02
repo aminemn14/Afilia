@@ -59,20 +59,6 @@ jest.mock('@expo/vector-icons', () => {
   return { Ionicons: Icon };
 });
 
-jest.mock('react-native-heroicons/outline', () => {
-  const React = require('react');
-  const { View } = require('react-native');
-  const Icon = () => React.createElement(View);
-  return {
-    BuildingLibraryIcon: Icon,
-    CameraIcon: Icon,
-    MapPinIcon: Icon,
-    MusicalNoteIcon: Icon,
-    MicrophoneIcon: Icon,
-    TicketIcon: Icon,
-  };
-});
-
 describe('MapScreen', () => {
   const fakeLocations = [
     {

@@ -21,10 +21,13 @@ jest.mock('../app/components/LoadingContainer', () => {
   const { View } = require('react-native');
   return () => React.createElement(View, { testID: 'loading' });
 });
-jest.mock('react-native-heroicons/outline', () => ({
-  TrashIcon: () => null,
-  ShoppingBagIcon: () => null,
-}));
+jest.mock('@expo/vector-icons', () => {
+  const React = require('react');
+  return {
+    Ionicons: ({ name, size, color }: any) =>
+      React.createElement('IoniconMock', { name, size, color }),
+  };
+});
 
 // Alias pour mocker fetch global
 const globalAny: any = global;

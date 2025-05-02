@@ -3,21 +3,14 @@ import { View, TouchableOpacity, Animated, Dimensions } from 'react-native';
 import Colors from '../constants/Colors';
 import { Tabs } from 'expo-router';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-
-import {
-  HomeIcon,
-  MapIcon,
-  ShoppingBagIcon,
-  ChatBubbleOvalLeftEllipsisIcon,
-  UserCircleIcon,
-} from 'react-native-heroicons/outline';
+import { Ionicons } from '@expo/vector-icons';
 
 const TAB_ICONS = {
-  index: HomeIcon,
-  map: MapIcon,
-  cart: ShoppingBagIcon,
-  messages: ChatBubbleOvalLeftEllipsisIcon,
-  profile: UserCircleIcon,
+  index: 'home-outline',
+  map: 'map-outline',
+  cart: 'cart-outline',
+  messages: 'chatbubble-ellipses-outline',
+  profile: 'person-circle-outline',
 };
 
 const CustomTabBar = ({
@@ -86,8 +79,9 @@ const CustomTabBar = ({
 
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
-          const IconComponent = TAB_ICONS[route.name as keyof typeof TAB_ICONS];
+          const iconName = TAB_ICONS[route.name as keyof typeof TAB_ICONS];
           const isFocused = state.index === index;
+
           const onPress = () => {
             const event = navigation.emit({
               type: 'tabPress',
@@ -109,7 +103,8 @@ const CustomTabBar = ({
                 justifyContent: 'center',
               }}
             >
-              <IconComponent
+              <Ionicons
+                name={iconName as any}
                 size={24}
                 color={isFocused ? Colors.white : Colors.gray600}
               />

@@ -11,14 +11,6 @@ import {
 import MapView, { Marker, Callout } from 'react-native-maps';
 import { MotiView, AnimatePresence } from 'moti';
 import { Ionicons } from '@expo/vector-icons';
-import {
-  BuildingLibraryIcon,
-  CameraIcon,
-  MapPinIcon,
-  MusicalNoteIcon,
-  MicrophoneIcon,
-  TicketIcon,
-} from 'react-native-heroicons/outline';
 import { router } from 'expo-router';
 import axios from 'axios';
 
@@ -43,26 +35,26 @@ function getIconForEventType(
   color: string
 ): JSX.Element {
   if (!eventTypes || eventTypes.length !== 1) {
-    return <MapPinIcon size={size} color={color} strokeWidth={1.8} />;
+    return <Ionicons name="location-outline" size={size} color={color} />;
   }
   const type = eventTypes[0].toLowerCase();
   switch (type) {
     case 'chorale':
-      return <MusicalNoteIcon size={size} color={color} strokeWidth={1.8} />;
+      return (
+        <Ionicons name="musical-notes-outline" size={size} color={color} />
+      );
     case 'musée':
     case 'museum':
-      return (
-        <BuildingLibraryIcon size={size} color={color} strokeWidth={1.8} />
-      );
+      return <Ionicons name="business-outline" size={size} color={color} />;
     case 'théâtre':
     case 'theatre':
-      return <TicketIcon size={size} color={color} strokeWidth={1.8} />;
+      return <Ionicons name="pricetag-outline" size={size} color={color} />;
     case 'concert':
-      return <MicrophoneIcon size={size} color={color} strokeWidth={1.8} />;
+      return <Ionicons name="mic-outline" size={size} color={color} />;
     case 'exposition':
-      return <CameraIcon size={size} color={color} strokeWidth={1.8} />;
+      return <Ionicons name="camera-outline" size={size} color={color} />;
     default:
-      return <MapPinIcon size={size} color={color} strokeWidth={1.8} />;
+      return <Ionicons name="location-outline" size={size} color={color} />;
   }
 }
 
