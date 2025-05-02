@@ -13,6 +13,10 @@ export default {
     ios: {
       bundleIdentifier: 'com.kodio.afilia',
       supportsTablet: true,
+      infoPlist: {
+        NSPhotoLibraryUsageDescription:
+          'Permet de sélectionner une photo de profil ou de partager des images dans les événements.',
+      },
     },
     splash: {
       image: './assets/images/splash.png',
