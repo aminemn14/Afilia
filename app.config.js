@@ -2,7 +2,7 @@ import 'dotenv/config';
 
 export default {
   expo: {
-    name: 'afilia',
+    name: 'Afilia',
     slug: 'afilia',
     version: '1.0.0',
     orientation: 'portrait',
@@ -11,7 +11,13 @@ export default {
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,
     ios: {
+      bundleIdentifier: 'com.kodio.afilia',
       supportsTablet: true,
+    },
+    splash: {
+      image: './assets/images/splash.png',
+      resizeMode: 'contain',
+      backgroundColor: '#ffffff',
     },
     extra: {
       apiBaseUrl: process.env.API_BASE_URL,
