@@ -21,6 +21,9 @@ export default {
     },
     extra: {
       apiBaseUrl: process.env.API_BASE_URL,
+      eas: {
+        projectId: '6a691b60-e448-4b42-a5ed-801356d8c5ec',
+      },
     },
     web: {
       bundler: 'metro',
