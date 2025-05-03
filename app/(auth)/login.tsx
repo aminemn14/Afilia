@@ -12,13 +12,27 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import Colors from '../constants/Colors';
 import apiConfig from '@/config/apiConfig';
+import Checkbox from 'expo-checkbox';
+import TermsModal from '../components/TermsModal';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+
+  const openModal = () => setModalVisible(true);
+  const closeModal = () => setModalVisible(false);
 
   const handleLogin = async () => {
+    if (!acceptedTerms) {
+      Alert.alert(
+        'Attention',
+        "Vous devez accepter les conditions d'utilisation pour continuer."
+      );
+      return;
+    }
     try {
       const response = await fetch(`${apiConfig.baseURL}/api/users/login`, {
         method: 'POST',
@@ -32,9 +46,6 @@ export default function LoginScreen() {
       }
 
       const data = await response.json();
-      console.log('Token reçu :', data.token);
-
-      // Stocker le token et l'objet utilisateur dans AsyncStorage
       await AsyncStorage.setItem('token', data.token);
       await AsyncStorage.setItem('user', JSON.stringify(data.user));
       router.replace('/(tabs)');
@@ -62,6 +73,7 @@ export default function LoginScreen() {
       </View>
 
       <View style={styles.form}>
+        {/* Email & Password inputs    */}
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Email</Text>
           <TextInput
@@ -74,7 +86,6 @@ export default function LoginScreen() {
             autoCapitalize="none"
           />
         </View>
-
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Mot de passe</Text>
           <View style={styles.inputWithIconContainer}>
@@ -99,6 +110,21 @@ export default function LoginScreen() {
           </View>
         </View>
 
+        {/* Checkbox + link to open modal */}
+        <View style={styles.checkboxContainer}>
+          <Checkbox
+            value={acceptedTerms}
+            onValueChange={setAcceptedTerms}
+            color={acceptedTerms ? Colors.primary : undefined}
+          />
+          <View style={styles.labelContainer}>
+            <Text style={styles.checkboxText}>J'accepte les </Text>
+            <TouchableOpacity onPress={openModal}>
+              <Text style={styles.linkText}>conditions d'utilisation</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
           <Text style={styles.loginButtonText}>Connexion</Text>
         </TouchableOpacity>
@@ -110,16 +136,15 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Terms modal component */}
+      <TermsModal visible={modalVisible} onClose={closeModal} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-    padding: 20,
-  },
+  container: { flex: 1, backgroundColor: Colors.background, padding: 20 },
   backButton: {
     position: 'absolute',
     top: 60,
@@ -132,27 +157,11 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     alignItems: 'flex-start',
   },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: Colors.text,
-  },
-  subtitle: {
-    fontSize: 18,
-    color: Colors.gray600,
-    marginTop: 4,
-  },
-  form: {
-    flex: 1,
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 16,
-    color: Colors.text,
-    marginBottom: 8,
-  },
+  title: { fontSize: 32, fontWeight: 'bold', color: Colors.text },
+  subtitle: { fontSize: 18, color: Colors.gray600, marginTop: 4 },
+  form: { flex: 1 },
+  inputContainer: { marginBottom: 20 },
+  label: { fontSize: 16, color: Colors.text, marginBottom: 8 },
   input: {
     backgroundColor: Colors.white,
     borderRadius: 12,
@@ -176,8 +185,18 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 16,
   },
-  iconContainer: {
-    paddingHorizontal: 12,
+  iconContainer: { paddingHorizontal: 12 },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  labelContainer: { flexDirection: 'row', flexWrap: 'wrap', marginLeft: 8 },
+  checkboxText: { fontSize: 14, color: Colors.text },
+  linkText: {
+    fontSize: 14,
+    textDecorationLine: 'underline',
+    color: Colors.primary,
   },
   loginButton: {
     backgroundColor: Colors.primary,
@@ -185,26 +204,15 @@ const styles = StyleSheet.create({
     height: 56,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
     marginTop: 24,
   },
-  loginButtonText: {
-    color: Colors.white,
-    fontSize: 18,
-    fontWeight: '600',
-  },
+  loginButtonText: { color: Colors.white, fontSize: 18, fontWeight: '600' },
   signupContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 16,
   },
-  signupText: {
-    color: Colors.gray600,
-    fontSize: 16,
-  },
-  signupLink: {
-    color: Colors.primary,
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  signupText: { color: Colors.gray600, fontSize: 16 },
+  signupLink: { color: Colors.primary, fontSize: 16, fontWeight: '600' },
 });

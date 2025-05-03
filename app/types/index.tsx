@@ -82,22 +82,25 @@ export interface Friend {
   id: string;
   name: string;
   username: string;
-  avatar: string;
+  avatar?: string;
   isFriend: boolean;
-  invitationPending?: boolean;
-  invitationReceived?: boolean;
-  invitationReceivedId?: string | null;
+  invitationPending: boolean;
+  invitationReceived: boolean;
+  invitationReceivedId: string | null;
+  isBlocked: boolean;
+  isBlockedBy: boolean;
 }
 
 export interface FriendItemProps {
   item: Friend;
-  index: number;
   isFriend: boolean;
-  onInviteSent?: (friendId: string) => void;
-  onAcceptReceived?: (
+  isBlockedBy: boolean;
+  onInviteSent: (id: string) => void;
+  onAcceptReceived: (
     friend: Friend,
     invitationReceivedId: string | null
-  ) => void;
+  ) => Promise<void>;
+  index: number;
 }
 
 export interface Invitation {

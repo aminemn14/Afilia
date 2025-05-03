@@ -21,15 +21,14 @@ import useSocket from '../../hooks/useSocket';
 import { MessageType } from '../../types';
 
 type RouteParams = {
-  conversationId: string;
+  id: string;
   friend: string;
 };
 
 const ChatConversation = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
-
-  const { conversationId, friend } = route.params;
+  const { id, friend } = route.params;
   const parsedFriend = typeof friend === 'string' ? JSON.parse(friend) : friend;
 
   if (!parsedFriend || !parsedFriend.id) {
@@ -49,168 +48,157 @@ const ChatConversation = () => {
   const flatListRef = useRef<FlatList>(null);
   const socketRef = useSocket();
 
-  // Fonction pour ajouter ou mettre à jour un message afin d'éviter le doublon
+  // Anti-dédoublement par ID
   const addMessage = (newMsg: MessageType) => {
-    setMessages((prev) => {
-      const index = prev.findIndex((m) => {
-        return (
-          m.sender === newMsg.sender &&
-          m.text.trim() === newMsg.text.trim() &&
-          m.id.startsWith('temp_') &&
-          Math.abs(m.createdAt.getTime() - newMsg.createdAt.getTime()) < 2000
-        );
-      });
-      if (index !== -1) {
-        const newMessages = [...prev];
-        newMessages[index] = newMsg;
-        return newMessages;
-      }
-      return [...prev, newMsg];
-    });
+    setMessages((prev) =>
+      prev.some((m) => m.id === newMsg.id) ? prev : [...prev, newMsg]
+    );
   };
 
-  // Récupération de l'utilisateur courant
+  // Récupération du user
   useEffect(() => {
-    const getUser = async () => {
-      try {
-        const userString = await AsyncStorage.getItem('user');
-        const currentUser = userString ? JSON.parse(userString) : null;
-        if (currentUser) {
-          const userId = currentUser.id || currentUser._id;
-          setCurrentUserId(userId);
-        }
-      } catch (error) {
-        console.error('Erreur lors de la récupération du user:', error);
-      }
-    };
-    getUser();
+    AsyncStorage.getItem('user')
+      .then((str) => {
+        const usr = str ? JSON.parse(str) : null;
+        if (usr) setCurrentUserId(usr.id || usr._id);
+      })
+      .catch((err) => console.error('Erreur fetch user', err));
   }, []);
 
-  // Dès que currentUserId est disponible, rejoindre la room Socket.IO
-  useEffect(() => {
-    if (socketRef.current && currentUserId) {
-      socketRef.current.emit('joinRoom', currentUserId);
-    }
-  }, [currentUserId, socketRef]);
+  // … en haut du composant
+  const socket = socketRef.current;
 
-  // Écoute des messages via Socket.IO
   useEffect(() => {
-    if (!socketRef.current) return;
-    socketRef.current.on('newMessage', (message: any) => {
-      const senderType =
-        message.sender_id === parsedFriend.id ? 'friend' : 'me';
+    if (!socket) return;
+
+    // 1. Se connecter explicitement si besoin
+    if (typeof socket.connect === 'function') {
+      socket.connect();
+    }
+
+    // 2. Quand la socket est connectée, rejoindre la conversation
+    const onConnect = () => {
+      console.log('Socket connectée, j’émet joinConversation', id);
+      socket.emit('joinConversation', id);
+    };
+    socket.on('connect', onConnect);
+
+    // 3. Listener pour les nouveaux messages
+    const onNewMessage = (message: any) => {
+      const isMe = message.sender_id === currentUserId;
       const newMsg: MessageType = {
-        id: message._id || message.id,
+        id: message._id,
         text: message.content,
-        sender: senderType,
+        sender: isMe ? 'me' : 'friend',
         createdAt: new Date(message.created_at),
       };
-      addMessage(newMsg);
-    });
-    return () => {
-      socketRef.current?.off('newMessage');
-    };
-  }, [parsedFriend.id, socketRef]);
 
-  // Chargement initial des messages depuis l'API
-  useEffect(() => {
-    const fetchMessages = async () => {
-      try {
-        const response = await fetch(
-          `${apiConfig.baseURL}/api/messages/conversations/${conversationId}/messages`
-        );
-        if (response.ok) {
-          const data = await response.json();
-          // Inverser l'ordre pour afficher chronologiquement (ancien en haut)
-          const mappedMessages = data
-            .map((msg: any) => ({
-              id: msg._id,
-              text: msg.content,
-              sender: msg.sender_id === parsedFriend.id ? 'friend' : 'me',
-              createdAt: new Date(msg.created_at),
-            }))
-            .reverse();
-          setMessages(mappedMessages);
-        } else {
-          console.error('Erreur lors du chargement des messages');
-        }
-      } catch (error) {
-        console.error('Erreur de fetch des messages', error);
+      if (isMe) {
+        // Remplace l'optimistic message temp_xxx par la version officielle
+        setMessages((prev) => {
+          const idx = prev.findIndex(
+            (m) => m.id.startsWith('temp_') && m.text === message.content
+          );
+          if (idx !== -1) {
+            const next = [...prev];
+            next[idx] = newMsg;
+            return next;
+          }
+          // Si aucun temp trouvé (cas rare), on ajoute quand même
+          return [...prev, newMsg];
+        });
+      } else {
+        // Pour les messages de l'ami, on ajoute si pas déjà présent
+        addMessage(newMsg);
+      }
+
+      // Scroll jusqu'en bas
+      flatListRef.current?.scrollToEnd({ animated: true });
+    };
+    socket.on('newMessage', onNewMessage);
+
+    // 4. Cleanup à la sortie
+    return () => {
+      socket.off('connect', onConnect);
+      socket.off('newMessage', onNewMessage);
+      // déconnecter si vous ne voulez pas garder la connexion en arrière-plan
+      if (typeof socket.disconnect === 'function') {
+        socket.disconnect();
       }
     };
-    fetchMessages();
-  }, [conversationId, parsedFriend.id]);
+  }, [socket, id, parsedFriend.id]);
 
-  // Scroll initial vers le bas
+  // Fetch initial
   useEffect(() => {
-    setTimeout(() => {
-      flatListRef.current?.scrollToEnd({ animated: false });
-    }, 300);
+    fetch(`${apiConfig.baseURL}/api/messages/conversations/${id}/messages`)
+      .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
+      .then((data) => {
+        const mapped = data
+          .map((msg: any) => ({
+            id: msg._id,
+            text: msg.content,
+            sender: msg.sender_id === parsedFriend.id ? 'friend' : 'me',
+            createdAt: new Date(msg.created_at),
+          }))
+          .reverse();
+        setMessages(mapped);
+      })
+      .catch((err) => console.error('Erreur fetch messages', err));
+  }, [id, parsedFriend.id]);
+
+  // Scroll to bottom at mount
+  useEffect(() => {
+    setTimeout(
+      () => flatListRef.current?.scrollToEnd({ animated: false }),
+      300
+    );
   }, []);
 
-  // Navigation vers le profil utilisateur
-  const goToUserProfile = () => {
+  const goToUserProfile = () =>
     router.push({
       pathname: '/(friends)/userProfile',
       params: { friendId: parsedFriend.id },
     });
-  };
 
-  // Envoi d'un message
-  const sendMessage = async () => {
+  const sendMessage = () => {
     if (!inputMessage.trim() || !currentUserId) return;
     const tempId = `temp_${Date.now()}`;
-    const newMsg: MessageType = {
+    addMessage({
       id: tempId,
       text: inputMessage,
       sender: 'me',
       createdAt: new Date(),
-    };
-    addMessage(newMsg);
+    });
     setInputMessage('');
-    setTimeout(() => {
-      flatListRef.current?.scrollToEnd({ animated: true });
-    }, 100);
-    if (socketRef.current) {
-      socketRef.current.emit('sendMessage', {
-        conversationId,
-        content: inputMessage,
-        sender_id: currentUserId,
-        receiver_id: parsedFriend.id,
-      });
-    }
-    const payload = {
-      conversation_id: conversationId,
+    setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+
+    socketRef.current?.emit('sendMessage', {
+      conversationId: id,
+      content: inputMessage,
       sender_id: currentUserId,
       receiver_id: parsedFriend.id,
-      content: inputMessage,
-    };
-    console.log('Envoi du message avec le payload :', payload);
-    try {
-      const response = await fetch(`${apiConfig.baseURL}/api/messages/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!response.ok) {
-        console.error(
-          'Erreur lors de l’enregistrement du message, status:',
-          response.status
-        );
-      }
-    } catch (error) {
-      console.error('Erreur API lors de l’envoi du message:', error);
-    }
+    });
+
+    fetch(`${apiConfig.baseURL}/api/messages/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        conversation_id: id,
+        sender_id: currentUserId,
+        receiver_id: parsedFriend.id,
+        content: inputMessage,
+      }),
+    })
+      .then((res) => !res.ok && console.error('Erreur POST', res.status))
+      .catch((err) => console.error('Erreur POST', err));
   };
 
-  // Formatage de l'heure (HH:MM)
-  const formatTime = (date: Date) =>
-    date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  // Formatage de la date (DD/MM)
-  const formatDateShort = (date: Date) => {
-    const d = date.getDate();
-    const m = date.getMonth() + 1;
-    return `${d < 10 ? '0' + d : d}/${m < 10 ? '0' + m : m}`;
+  const formatTime = (d: Date) =>
+    d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const formatDate = (d: Date) => {
+    const day = d.getDate(),
+      mon = d.getMonth() + 1;
+    return `${day < 10 ? '0' + day : day}/${mon < 10 ? '0' + mon : mon}`;
   };
 
   const renderMessage = ({ item }: { item: MessageType }) => {
@@ -232,7 +220,7 @@ const ChatConversation = () => {
               isMe ? styles.dateTimeMine : styles.dateTimeFriend,
             ]}
           >
-            {formatDateShort(item.createdAt)}
+            {formatDate(item.createdAt)}
           </Text>
           <Text
             style={[
@@ -252,19 +240,17 @@ const ChatConversation = () => {
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 10}
+        keyboardVerticalOffset={10}
       >
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
-            testID="back-button"
             style={styles.backButton}
           >
             <Ionicons name="chevron-back" size={28} color={Colors.text} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.profileHeader}
-            testID="profile-header"
             onPress={goToUserProfile}
           >
             <Image
@@ -287,8 +273,6 @@ const ChatConversation = () => {
             </View>
           </TouchableOpacity>
         </View>
-
-        {/* Liste des messages */}
         {messages.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>Démarrer la conversation</Text>
@@ -298,7 +282,7 @@ const ChatConversation = () => {
             ref={flatListRef}
             data={messages}
             renderItem={renderMessage}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(i) => i.id}
             contentContainerStyle={[
               styles.messagesList,
               { flexGrow: 1, justifyContent: 'flex-end' },
@@ -308,8 +292,6 @@ const ChatConversation = () => {
             }
           />
         )}
-
-        {/* Zone de saisie */}
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
@@ -318,11 +300,7 @@ const ChatConversation = () => {
             value={inputMessage}
             onChangeText={setInputMessage}
           />
-          <TouchableOpacity
-            onPress={sendMessage}
-            testID="send-button"
-            style={styles.sendButton}
-          >
+          <TouchableOpacity onPress={sendMessage} style={styles.sendButton}>
             <Ionicons name="send" size={24} color={Colors.white} />
           </TouchableOpacity>
         </View>
@@ -332,14 +310,8 @@ const ChatConversation = () => {
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: Colors.white,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: Colors.white,
-  },
+  safeArea: { flex: 1, backgroundColor: Colors.white },
+  container: { flex: 1, backgroundColor: Colors.white },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -348,87 +320,44 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.gray200,
   },
-  backButton: {
-    marginRight: 8,
-  },
+  backButton: { marginRight: 8 },
   profileHeader: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     paddingLeft: 20,
   },
-  headerTextContainer: {
-    flex: 1,
-    marginHorizontal: 8,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.text,
-  },
-  headerUsername: {
-    fontSize: 12,
-    color: Colors.gray400,
-  },
-  messagesList: {
-    padding: 16,
-    paddingBottom: 80,
-  },
+  headerTextContainer: { flex: 1, marginHorizontal: 8 },
+  avatar: { width: 40, height: 40, borderRadius: 20 },
+  headerTitle: { fontSize: 20, fontWeight: 'bold', color: Colors.text },
+  headerUsername: { fontSize: 12, color: Colors.gray400 },
+  messagesList: { padding: 16, paddingBottom: 80 },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
   },
-  emptyText: {
-    fontSize: 18,
-    color: Colors.gray400,
-  },
+  emptyText: { fontSize: 18, color: Colors.gray400 },
   messageContainer: {
     marginVertical: 4,
     maxWidth: '70%',
     padding: 10,
     borderRadius: 10,
   },
-  messageLeft: {
-    alignSelf: 'flex-start',
-    backgroundColor: Colors.gray100,
-  },
-  messageRight: {
-    alignSelf: 'flex-end',
-    backgroundColor: Colors.primary,
-  },
-  messageText: {
-    fontSize: 16,
-    color: Colors.text,
-  },
-  messageTextRight: {
-    color: Colors.white,
-  },
+  messageLeft: { alignSelf: 'flex-start', backgroundColor: Colors.gray100 },
+  messageRight: { alignSelf: 'flex-end', backgroundColor: Colors.primary },
+  messageText: { fontSize: 16, color: Colors.text },
+  messageTextRight: { color: Colors.white },
   messageDateContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 4,
   },
-  messageDate: {
-    fontSize: 10,
-    marginRight: 8,
-  },
-  messageTime: {
-    fontSize: 10,
-    textAlign: 'right',
-  },
-  dateTimeMine: {
-    color: Colors.gray100,
-  },
-  dateTimeFriend: {
-    color: Colors.gray400,
-  },
+  messageDate: { fontSize: 10, marginRight: 8 },
+  messageTime: { fontSize: 10, textAlign: 'right' },
+  dateTimeMine: { color: Colors.gray100 },
+  dateTimeFriend: { color: Colors.gray400 },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -458,10 +387,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: Colors.white,
   },
-  errorText: {
-    fontSize: 18,
-    color: 'red',
-  },
+  errorText: { fontSize: 18, color: 'red' },
 });
 
 export default ChatConversation;

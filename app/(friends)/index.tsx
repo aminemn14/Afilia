@@ -13,10 +13,10 @@ import Colors from '../constants/Colors';
 import { router } from 'expo-router';
 import apiConfig from '@/config/apiConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Friend } from '../types';
 import FriendItem from '../components/FriendItem';
 import useSocket from '../hooks/useSocket';
 import LoadingContainer from '../components/LoadingContainer';
+import { Friend } from '../types/index';
 
 export default function FriendsScreen() {
   const [allUsers, setAllUsers] = useState<Friend[]>([]);
@@ -24,104 +24,105 @@ export default function FriendsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState<Error | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-
   const socketRef = useSocket();
 
-  // Chargement initial des données
+  // 1) Chargement initial (inclut marquage des bloqués et blockers)
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // 1. Récupérer l'utilisateur connecté depuis AsyncStorage
         const userString = await AsyncStorage.getItem('user');
         const currentUser = userString ? JSON.parse(userString) : null;
-        const currentId = currentUser
-          ? currentUser.id || currentUser._id
-          : null;
+        const currentId = currentUser?.id || currentUser?._id;
         if (!currentId) {
-          setLoading(false);
           router.replace('/login');
           return;
         }
         setCurrentUserId(currentId);
 
-        // 2. Récupérer tous les utilisateurs hors currentUser
-        const usersResponse = await fetch(`${apiConfig.baseURL}/api/users`);
-        if (!usersResponse.ok) {
-          throw new Error(`Erreur HTTP ${usersResponse.status}`);
-        }
-        const usersResult = await usersResponse.json();
-        const usersData: any[] = Array.isArray(usersResult)
-          ? usersResult
-          : usersResult.users;
-        const filteredUsers = usersData.filter(
-          (u) => String(u._id || u.id) !== String(currentId)
-        );
-        let users: Friend[] = filteredUsers.map((u) => ({
-          id: u._id || u.id,
-          name: `${u.firstname} ${u.lastname}`,
-          username: u.username,
-          avatar: u.avatar,
-          isFriend: false,
-          invitationPending: false,
-          invitationReceived: false,
-          invitationReceivedId: null,
-        }));
+        // 1.a. Récupère tous les utilisateurs sauf moi
+        const usersRes = await fetch(`${apiConfig.baseURL}/api/users`);
+        const raw = await usersRes.json();
+        const rawUsers: any[] = Array.isArray(raw) ? raw : raw.users;
 
-        // 3. Récupérer la liste des amis pour currentId
-        const friendsResponse = await fetch(
+        let users: Friend[] = rawUsers
+          .filter((u) => String(u._id) !== currentId)
+          .map((u) => ({
+            id: u._id,
+            name: `${u.firstname} ${u.lastname}`,
+            username: u.username,
+            avatar: u.avatar,
+            isFriend: false,
+            invitationPending: false,
+            invitationReceived: false,
+            invitationReceivedId: null,
+            isBlocked: false,
+            isBlockedBy: false,
+          }));
+
+        // 1.b. Marque les amis
+        const friendsRes = await fetch(
           `${apiConfig.baseURL}/api/friends/${currentId}`
         );
-        if (!friendsResponse.ok) {
-          throw new Error(`Erreur HTTP ${friendsResponse.status}`);
-        }
-        const friendsResult = await friendsResponse.json();
-        const friendIds = friendsResult.map((f: any) =>
-          String(f.friendId._id || f.friendId)
-        );
+        const friendsJson = await friendsRes.json();
+        const friendIds = friendsJson.map((f: any) => String(f.friendId._id));
         users = users.map((u) => ({
           ...u,
-          isFriend: friendIds.includes(String(u.id)),
+          isFriend: friendIds.includes(u.id),
         }));
 
-        // 4. Récupérer les invitations reçues (pending) pour lesquelles currentId est le receiver
-        const pendingReceivedResponse = await fetch(
+        // 1.c. Invitations reçues
+        const recRes = await fetch(
           `${apiConfig.baseURL}/api/invitations?receiverId=${currentId}&status=pending`
         );
-        if (pendingReceivedResponse.ok) {
-          const pendingReceivedInvitations =
-            await pendingReceivedResponse.json();
-          const pendingReceivedMap: { [key: string]: string } = {};
-          if (Array.isArray(pendingReceivedInvitations)) {
-            pendingReceivedInvitations.forEach((inv: any) => {
-              const senderId = String(inv.senderId._id || inv.senderId);
-              pendingReceivedMap[senderId] = inv._id;
-            });
-          }
-          users = users.map((u) => ({
-            ...u,
-            invitationReceived: pendingReceivedMap.hasOwnProperty(String(u.id)),
-            invitationReceivedId: pendingReceivedMap[String(u.id)] || null,
-          }));
-        }
+        const recJson = await recRes.json();
+        const recMap: Record<string, string> = {};
+        (recJson as any[]).forEach((inv) => {
+          const sid = String(inv.senderId._id || inv.senderId);
+          recMap[sid] = inv._id;
+        });
+        users = users.map((u) => ({
+          ...u,
+          invitationReceived: Boolean(recMap[u.id]),
+          invitationReceivedId: recMap[u.id] || null,
+        }));
 
-        // 5. Récupérer les invitations envoyées (pending)
-        const pendingSentResponse = await fetch(
+        // 1.d. Invitations envoyées
+        const sendRes = await fetch(
           `${apiConfig.baseURL}/api/invitations?senderId=${currentId}&status=pending`
         );
-        if (pendingSentResponse.ok) {
-          const pendingSentInvitations = await pendingSentResponse.json();
-          const pendingSentReceiverIds = Array.isArray(pendingSentInvitations)
-            ? pendingSentInvitations.map((inv: any) => String(inv.receiverId))
-            : [];
-          users = users.map((u) => ({
-            ...u,
-            invitationPending: pendingSentReceiverIds.includes(String(u.id)),
-          }));
-        }
+        const sendJson = await sendRes.json();
+        const sentTo = (sendJson as any[]).map((inv) => String(inv.receiverId));
+        users = users.map((u) => ({
+          ...u,
+          invitationPending: sentTo.includes(u.id),
+        }));
+
+        // 1.e. Mes blockedUsers
+        const meRes = await fetch(
+          `${apiConfig.baseURL}/api/users/${currentId}`
+        );
+        const meJson = await meRes.json();
+        const blockedIds: string[] = Array.isArray(meJson.blockedUsers)
+          ? meJson.blockedUsers.map((b: any) => String(b))
+          : [];
+        users = users.map((u) => ({
+          ...u,
+          isBlocked: blockedIds.includes(u.id),
+        }));
+
+        // 1.f. Ceux qui m'ont bloqué
+        const blockedByRes = await fetch(
+          `${apiConfig.baseURL}/api/users/blockedBy/${currentId}`
+        );
+        const blockedByJson: string[] = await blockedByRes.json();
+        users = users.map((u) => ({
+          ...u,
+          isBlockedBy: blockedByJson.includes(u.id),
+        }));
 
         setAllUsers(users);
       } catch (err: any) {
-        console.error('Erreur lors du chargement des utilisateurs :', err);
+        console.error('Erreur chargement FriendsScreen:', err);
         setError(err);
       } finally {
         setLoading(false);
@@ -131,50 +132,49 @@ export default function FriendsScreen() {
     fetchData();
   }, []);
 
-  // Écouter les événements Socket.IO pour actualiser en temps réel
+  // 2) Socket.IO : mise à jour en temps réel
   useEffect(() => {
-    if (!socketRef.current || !currentUserId) return;
-    socketRef.current.emit('joinRoom', currentUserId);
+    const socket = socketRef.current;
+    if (!socket || !currentUserId) return;
 
-    // Quand une invitation est reçue (du point de vue du receiver)
-    socketRef.current.on('invitationReceived', (invitation: any) => {
-      setAllUsers((prevUsers) =>
-        prevUsers.map((u) =>
-          String(u.id) ===
-          String(invitation.senderId._id || invitation.senderId)
-            ? {
-                ...u,
-                invitationReceived: true,
-                invitationReceivedId: invitation._id,
-              }
+    socket.emit('joinRoom', currentUserId);
+
+    // Invitation reçue
+    socket.on('invitationReceived', (inv: any) => {
+      setAllUsers((prev) =>
+        prev.map((u) =>
+          String(u.id) === String(inv.senderId._id || inv.senderId)
+            ? { ...u, invitationReceived: true, invitationReceivedId: inv._id }
             : u
         )
       );
     });
 
-    // Quand une invitation est mise à jour (acceptée ou rejetée)
-    socketRef.current.on('invitationUpdated', (invitation: any) => {
-      // Pour l'utilisateur concerné (sender), supprimer l'indication
-      setAllUsers((prevUsers) =>
-        prevUsers.map((u) =>
-          String(u.id) ===
-          String(invitation.senderId._id || invitation.senderId)
-            ? {
-                ...u,
-                invitationReceived: false,
-                invitationReceivedId: null,
-                invitationPending: false,
-              }
-            : u
+    // Invitation acceptée/refusée
+    socket.on('invitationUpdated', (inv: any) => {
+      const rid = inv.receiverId._id || inv.receiverId;
+      setAllUsers((prev) =>
+        prev.map((u) =>
+          String(u.id) === String(rid) ? { ...u, invitationPending: false } : u
         )
       );
     });
 
-    // Lorsqu'une relation d'ami est établie, mettre à jour l'utilisateur
-    socketRef.current.on('friendUpdated', (data: { friendId: string }) => {
-      setAllUsers((prevUsers) =>
-        prevUsers.map((u) =>
-          String(u.id) === String(data.friendId)
+    // Invitation supprimée
+    socket.on('invitationDeleted', (inv: any) => {
+      const rid = inv.receiverId._id || inv.receiverId;
+      setAllUsers((prev) =>
+        prev.map((u) =>
+          String(u.id) === String(rid) ? { ...u, invitationPending: false } : u
+        )
+      );
+    });
+
+    // Ami ajouté
+    socket.on('friendAdded', ({ friendId: fid }: { friendId: string }) => {
+      setAllUsers((prev) =>
+        prev.map((u) =>
+          u.id === fid
             ? {
                 ...u,
                 isFriend: true,
@@ -187,60 +187,38 @@ export default function FriendsScreen() {
       );
     });
 
-    // Lorsqu'une relation d'ami est supprimée, mettre à jour l'utilisateur
-    socketRef.current.on('friendRemoved', (data: { friendId: string }) => {
-      setAllUsers((prevUsers) =>
-        prevUsers.map((u) =>
-          String(u.id) === String(data.friendId) ? { ...u, isFriend: false } : u
-        )
+    // Ami supprimé
+    socket.on('friendRemoved', ({ friendId: fid }: { friendId: string }) => {
+      setAllUsers((prev) =>
+        prev.map((u) => (u.id === fid ? { ...u, isFriend: false } : u))
+      );
+    });
+
+    // Utilisateur débloqué
+    socket.on('userUnblocked', ({ unblockerId }) => {
+      setAllUsers((prev) =>
+        prev.map((u) => (u.id === unblockerId ? { ...u, isBlocked: false } : u))
       );
     });
 
     return () => {
-      socketRef.current?.off('invitationReceived');
-      socketRef.current?.off('invitationUpdated');
-      socketRef.current?.off('friendUpdated');
-      socketRef.current?.off('friendRemoved');
+      socket.off('invitationReceived');
+      socket.off('invitationUpdated');
+      socket.off('invitationDeleted');
+      socket.off('friendAdded');
+      socket.off('friendRemoved');
+      socket.off('userUnblocked');
     };
   }, [currentUserId, socketRef]);
 
-  // Séparer en amis et non-amis
-  const friendsList = allUsers.filter((u) => u.isFriend);
-  const nonFriendsList = allUsers.filter((u) => !u.isFriend);
-
-  const filterUsers = (users: Friend[]) =>
-    users.filter(
-      (u) =>
-        (u.name && u.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (u.username &&
-          u.username.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
-
-  const filteredFriends = filterUsers(friendsList);
-  const filteredNonFriends = filterUsers(nonFriendsList);
-  const randomNonFriends = filteredNonFriends
-    .sort(() => Math.random() - 0.5)
-    .slice(0, 3);
-
-  const sections = [
-    { title: 'Amis', data: filteredFriends, isFriend: true },
-    { title: 'NonAmis', data: randomNonFriends, isFriend: false },
-  ];
-
-  // Marquer localement une invitation envoyée comme pending
-  const markInvitationPending = (friendId: string) => {
-    setAllUsers((prevUsers) =>
-      prevUsers.map((u) =>
-        u.id === friendId ? { ...u, invitationPending: true } : u
-      )
-    );
-  };
-
-  // Accepter une invitation reçue
-  const handleAcceptReceivedInvitation = async (friend: Friend) => {
+  // Accepter invitation reçue
+  const handleAcceptReceivedInvitation = async (
+    friend: Friend,
+    invitationReceivedId: string | null
+  ) => {
     if (!currentUserId || !friend.invitationReceivedId) return;
     try {
-      const response = await fetch(
+      await fetch(
         `${apiConfig.baseURL}/api/invitations/${friend.invitationReceivedId}`,
         {
           method: 'PUT',
@@ -248,68 +226,88 @@ export default function FriendsScreen() {
           body: JSON.stringify({ status: 'accepted' }),
         }
       );
-      if (!response.ok) throw new Error(`Erreur HTTP ${response.status}`);
-      // Mise à jour locale : l'utilisateur devient ami
-      setAllUsers((prevUsers) =>
-        prevUsers.map((u) =>
+      await fetch(`${apiConfig.baseURL}/api/friends`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUserId, friendId: friend.id }),
+      });
+      setAllUsers((prev) =>
+        prev.map((u) =>
           u.id === friend.id
             ? {
                 ...u,
+                isFriend: true,
                 invitationReceived: false,
                 invitationReceivedId: null,
-                isFriend: true,
               }
             : u
         )
       );
-      // Créer la relation d'ami côté backend
-      const addFriendResponse = await fetch(
-        `${apiConfig.baseURL}/api/friends`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: currentUserId, friendId: friend.id }),
-        }
-      );
-      if (!addFriendResponse.ok) {
-        throw new Error(
-          `Erreur lors de l'ajout en ami : HTTP ${addFriendResponse.status}`
-        );
-      }
-      Alert.alert(
-        'Invitation acceptée',
-        "L'invitation a été acceptée et l'utilisateur a été ajouté à vos amis."
-      );
-    } catch (error: any) {
-      console.error("Erreur lors de l'acceptation de l'invitation :", error);
-      Alert.alert('Erreur', error.message);
+      Alert.alert('Invitation acceptée');
+    } catch (err: any) {
+      console.error(err);
+      Alert.alert('Erreur', err.message);
     }
   };
 
-  const renderItem = ({ item, index, section }: any) => (
-    <FriendItem
-      item={item}
-      index={index}
-      isFriend={section.isFriend}
-      onInviteSent={markInvitationPending}
-      onAcceptReceived={handleAcceptReceivedInvitation}
-    />
-  );
-
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <LoadingContainer />
-      </View>
+  // Marquer localement une invitation envoyée
+  const markInvitationPending = (id: string) => {
+    setAllUsers((prev) =>
+      prev.map((u) => (u.id === id ? { ...u, invitationPending: true } : u))
     );
-  }
-  if (error) {
+  };
+
+  // Débloquer un utilisateur
+  const handleUnblock = async (id: string) => {
+    if (!currentUserId) return;
+    try {
+      const resp = await fetch(
+        `${apiConfig.baseURL}/api/users/${currentUserId}/unblock/${id}`,
+        { method: 'POST' }
+      );
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      setAllUsers((prev) =>
+        prev.map((u) => (u.id === id ? { ...u, isBlocked: false } : u))
+      );
+      Alert.alert('Utilisateur débloqué');
+    } catch (err: any) {
+      console.error(err);
+      Alert.alert('Erreur', err.message);
+    }
+  };
+
+  if (loading) return <LoadingContainer />;
+  if (error)
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>Erreur : {error.message}</Text>
       </View>
     );
-  }
+
+  // Séparer en sections et filtrer
+  const blockedList = allUsers.filter((u) => u.isBlocked);
+  const friendsList = allUsers.filter((u) => u.isFriend && !u.isBlocked);
+  const nonFriendsList = allUsers.filter(
+    (u) => !u.isFriend && !u.isBlocked && !u.isBlockedBy
+  );
+
+  const filtered = (list: Friend[]) =>
+    list.filter(
+      (u) =>
+        u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        u.username.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+  const sections = [
+    { title: 'Bloqués', data: filtered(blockedList), type: 'blocked' },
+    { title: 'Amis', data: filtered(friendsList), type: 'friends' },
+    {
+      title: 'Suggestions',
+      data: filtered(nonFriendsList),
+      type: 'nonFriends',
+    },
+  ];
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -320,11 +318,11 @@ export default function FriendsScreen() {
           >
             <Ionicons name="chevron-back" size={24} color={Colors.text} />
           </TouchableOpacity>
-          <Text style={styles.title}>Amis</Text>
+          <Text style={styles.title}>Utilisateurs</Text>
         </View>
         <TextInput
           style={styles.searchInput}
-          placeholder="Rechercher un utilisateur"
+          placeholder="Rechercher"
           placeholderTextColor={Colors.gray400}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -334,27 +332,46 @@ export default function FriendsScreen() {
       <SectionList
         sections={sections}
         keyExtractor={(item) => item.id}
-        renderItem={renderItem}
         renderSectionHeader={({ section }) =>
-          section.data.length > 0 && section.title === 'NonAmis' ? (
-            <View style={styles.sectionSeparator} />
-          ) : section.data.length > 0 && section.title === 'Amis' ? (
-            <Text style={styles.sectionHeader}>Amis</Text>
+          section.data.length > 0 ? (
+            <Text style={styles.sectionHeader}>{section.title}</Text>
           ) : null
         }
-        contentContainerStyle={
-          allUsers.length === 0
-            ? styles.emptyListContainer
-            : styles.listContainer
-        }
+        renderItem={({ item, section }) => {
+          if (section.type === 'blocked') {
+            return (
+              <View style={styles.blockedItem}>
+                <Text style={styles.blockedName}>{item.name}</Text>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.unblockButton]}
+                  onPress={() => handleUnblock(item.id)}
+                >
+                  <Text style={styles.actionButtonText}>Débloquer</Text>
+                </TouchableOpacity>
+              </View>
+            );
+          }
+          return (
+            <FriendItem
+              item={item}
+              isFriend={section.type === 'friends'}
+              isBlockedBy={item.isBlockedBy}
+              onInviteSent={markInvitationPending}
+              onAcceptReceived={(friend, invitationReceivedId) =>
+                handleAcceptReceivedInvitation(friend, invitationReceivedId)
+              }
+              index={0}
+            />
+          );
+        }}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Ionicons name="person-outline" size={64} color={Colors.gray400} />
+            <Ionicons name="people-outline" size={64} color={Colors.gray400} />
             <Text style={styles.emptyStateText}>Aucun utilisateur</Text>
-            <Text style={styles.emptyStateSubtext}>
-              Commencez à ajouter des amis pour discuter !
-            </Text>
           </View>
+        }
+        contentContainerStyle={
+          allUsers.length === 0 ? styles.emptyListContainer : undefined
         }
         showsVerticalScrollIndicator={false}
       />
@@ -363,11 +380,6 @@ export default function FriendsScreen() {
 }
 
 const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -375,7 +387,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   errorText: {
-    color: Colors.primary,
+    color: Colors.error,
     fontSize: 18,
   },
   container: {
@@ -426,15 +438,6 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 10,
   },
-  sectionSeparator: {
-    height: 1,
-    backgroundColor: Colors.gray200,
-    marginHorizontal: 20,
-    marginBottom: 20,
-  },
-  listContainer: {
-    paddingTop: 20,
-  },
   emptyListContainer: {
     flexGrow: 1,
     justifyContent: 'center',
@@ -448,11 +451,35 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.text,
     marginTop: 16,
-    marginBottom: 8,
   },
-  emptyStateSubtext: {
+  blockedItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: '#FFF5E5',
+    marginHorizontal: 20,
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  blockedName: {
     fontSize: 16,
-    color: Colors.gray600,
-    textAlign: 'center',
+    color: Colors.text,
+  },
+  actionButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+  },
+  actionButtonText: {
+    color: Colors.white,
+    fontWeight: 'bold',
+  },
+  unblockButton: {
+    backgroundColor: Colors.success,
+  },
+  disabledButton: {
+    backgroundColor: Colors.gray200,
   },
 });

@@ -1,4 +1,7 @@
+// controllers/userController.js
+
 const User = require('../models/User');
+const Friend = require('../models/Friend');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
@@ -15,19 +18,16 @@ exports.loginUser = async (req, res) => {
         .json({ error: 'Email et mot de passe sont requis' });
     }
 
-    // Recherche de l'utilisateur par email
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(401).json({ error: 'Identifiants invalides' });
     }
 
-    // Comparaison du mot de passe
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
       return res.status(401).json({ error: 'Identifiants invalides' });
     }
 
-    // Génération du token JWT
     const payload = { userId: user._id };
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
 
@@ -67,44 +67,32 @@ exports.createUser = async (req, res) => {
       password,
       firstname,
       lastname,
-      birthDate,
-      age,
-      sexe,
       phoneNumber,
       createdAt,
     } = req.body;
 
-    // Vérification que tous les champs obligatoires sont présents
     if (
       !username ||
       !email ||
       !password ||
       !firstname ||
       !lastname ||
-      !birthDate ||
-      !age ||
-      !sexe ||
       !phoneNumber
     ) {
       return res.status(400).json({ error: 'Tous les champs sont requis' });
     }
 
-    // Hachage du mot de passe
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // Création d'un nouvel utilisateur avec le mot de passe haché
     const newUser = new User({
       username,
       email,
       password: hashedPassword,
       firstname,
       lastname,
-      birthDate,
-      age,
-      sexe,
       phoneNumber,
-      role: 'user', // rôle fixe par défaut
-      createdAt: createdAt || new Date().toISOString(),
+      role: 'user',
+      createdAt: createdAt || new Date(),
     });
 
     const savedUser = await newUser.save();
@@ -136,6 +124,99 @@ exports.deleteUser = async (req, res) => {
       return res.status(404).json({ error: 'Utilisateur non trouvé' });
     res.json({ message: 'Utilisateur supprimé' });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Bloquer un utilisateur (supprime aussi de la liste d'amis)
+exports.blockUser = async (req, res) => {
+  try {
+    const userId = req.params.id; // celui qui bloque
+    const targetId = req.params.targetId; // celui à bloquer
+
+    if (userId === targetId) {
+      return res
+        .status(400)
+        .json({ error: 'Vous ne pouvez pas vous bloquer vous-même' });
+    }
+
+    // 1) Supprimer relation d'ami dans les deux sens
+    await Friend.deleteOne({ userId, friendId: targetId });
+    await Friend.deleteOne({ userId: targetId, friendId: userId });
+
+    // 2) Ajouter targetId dans blockedUsers s'il n'y est pas déjà
+    const updated = await User.findByIdAndUpdate(
+      userId,
+      { $addToSet: { blockedUsers: targetId } },
+      { new: true }
+    ).populate('blockedUsers', 'username firstname lastname');
+
+    if (!updated) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    // 3) Émettre événements websocket :
+    const io = req.app.get('socketio');
+    if (io) {
+      // notifier le bloqué
+      io.to(targetId).emit('userBlocked', { blockerId: userId });
+      // notifier suppression d'ami
+      io.to(userId).emit('friendRemoved', { friendId: targetId });
+      io.to(targetId).emit('friendRemoved', { friendId: userId });
+    }
+
+    res.json({
+      message: `Utilisateur ${targetId} bloqué et supprimé des amis`,
+      blockedUsers: updated.blockedUsers,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Débloquer un utilisateur
+exports.unblockUser = async (req, res) => {
+  try {
+    const userId = req.params.id; // celui qui débloque
+    const targetId = req.params.targetId; // celui à débloquer
+
+    const updated = await User.findByIdAndUpdate(
+      userId,
+      { $pull: { blockedUsers: targetId } },
+      { new: true }
+    ).populate('blockedUsers', 'username firstname lastname');
+
+    if (!updated) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    const io = req.app.get('socketio');
+    if (io) {
+      io.to(targetId).emit('userUnblocked', { unblockerId: userId });
+    }
+
+    res.json({
+      message: `Utilisateur ${targetId} débloqué`,
+      blockedUsers: updated.blockedUsers,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getUsersWhoBlocked = async (req, res) => {
+  try {
+    const targetId = req.params.id;
+    // Cherche tous les users pour lesquels blockedUsers inclut targetId
+    const blockers = await User.find(
+      { blockedUsers: targetId },
+      '_id firstname lastname username'
+    );
+    // On ne renvoie que les IDs (ou on peut renvoyer le user complet selon besoin)
+    const blockerIds = blockers.map((u) => u._id);
+    res.json(blockerIds);
+  } catch (err) {
+    console.error('Erreur getUsersWhoBlocked:', err);
     res.status(500).json({ error: err.message });
   }
 };

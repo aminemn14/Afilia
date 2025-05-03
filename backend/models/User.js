@@ -7,15 +7,17 @@ const UserSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
-  age: { type: Number },
-  sexe: { type: String, enum: ['homme', 'femme'] },
   phoneNumber: { type: String },
-  birthDate: { type: Date },
   createdAt: { type: Date, default: Date.now },
-  // Champs spécifiques au Profile (extension de User)
   bio: { type: String, default: '' },
   avatar: { type: String, default: '' },
   cashbackBalance: { type: Number, default: 0 },
+  blockedUsers: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+  ],
 });
 
 module.exports = mongoose.model('User', UserSchema);

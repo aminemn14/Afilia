@@ -6,19 +6,19 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
+  Dimensions,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import Colors from '../constants/Colors';
 import apiConfig from '@/config/apiConfig';
+import Checkbox from 'expo-checkbox';
+import TermsModal from '../components/TermsModal';
+
+const { height } = Dimensions.get('window');
 
 export default function SignUpScreen() {
-  // Calcul de la date maximale autorisée (au moins 12 ans)
-  const maxAllowedDate = new Date();
-  maxAllowedDate.setFullYear(maxAllowedDate.getFullYear() - 12);
-
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -26,118 +26,82 @@ export default function SignUpScreen() {
     confirmPassword: '',
     firstname: '',
     lastname: '',
-    birthDate: maxAllowedDate,
-    sexe: '',
     phoneNumber: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
 
-  // Calcule l'âge à partir d'un objet Date
-  const calculateAge = (birthDate: Date) => {
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const m = today.getMonth() - birthDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    return age;
-  };
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('fr-FR');
-  };
-
-  const handleDateChange = (event: any, selectedDate: Date | undefined) => {
-    if (selectedDate) {
-      setFormData({ ...formData, birthDate: selectedDate });
-    }
-  };
+  const openModal = () => setModalVisible(true);
+  const closeModal = () => setModalVisible(false);
 
   const handleSignUp = async () => {
+    const {
+      username,
+      email,
+      password,
+      confirmPassword,
+      firstname,
+      lastname,
+      phoneNumber,
+    } = formData;
+
+    if (
+      !username ||
+      !email ||
+      !password ||
+      !confirmPassword ||
+      !firstname ||
+      !lastname ||
+      !phoneNumber
+    ) {
+      Alert.alert('Erreur', 'Veuillez remplir tous les champs');
+      return;
+    }
+    if (password !== confirmPassword) {
+      Alert.alert('Erreur', 'Les mots de passe ne correspondent pas');
+      return;
+    }
+    if (password.length < 8) {
+      Alert.alert(
+        'Erreur',
+        'Le mot de passe doit comporter au moins 8 caractères'
+      );
+      return;
+    }
+    if (!acceptedTerms) {
+      Alert.alert(
+        'Attention',
+        "Vous devez accepter les conditions d'utilisation pour continuer."
+      );
+      return;
+    }
+
     try {
-      const {
-        username,
-        email,
-        password,
-        confirmPassword,
-        firstname,
-        lastname,
-        birthDate,
-        sexe,
-        phoneNumber,
-      } = formData;
-
-      if (
-        !username ||
-        !email ||
-        !password ||
-        !confirmPassword ||
-        !firstname ||
-        !lastname ||
-        !birthDate ||
-        !sexe ||
-        !phoneNumber
-      ) {
-        Alert.alert('Erreur', 'Veuillez remplir tous les champs');
-        return;
-      }
-
-      if (password !== confirmPassword) {
-        Alert.alert('Erreur', 'Les mots de passe ne correspondent pas');
-        return;
-      }
-
-      if (password.length < 8) {
-        Alert.alert(
-          'Erreur',
-          'Le mot de passe doit comporter au moins 8 caractères'
-        );
-        return;
-      }
-
-      const age = calculateAge(birthDate);
-      if (age < 12) {
-        Alert.alert(
-          'Erreur',
-          'Vous devez avoir au moins 12 ans pour vous inscrire.'
-        );
-        return;
-      }
-
-      const isoBirthDate = birthDate.toISOString();
       const isoCreatedAt = new Date().toISOString();
-
       const userData = {
         username,
         email,
         password,
         firstname,
         lastname,
-        birthDate: isoBirthDate,
-        age,
-        sexe,
         phoneNumber,
         role: 'user',
         createdAt: isoCreatedAt,
       };
-
       const response = await fetch(`${apiConfig.baseURL}/api/users`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData),
       });
-
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(
           errorData.error || 'Erreur lors de la création du compte'
         );
       }
-
-      const data = await response.json();
-      console.log('Utilisateur créé :', data);
-      // Redirige vers l'écran de connexion
+      await response.json();
       router.replace('/login');
     } catch (error) {
       Alert.alert(
@@ -153,7 +117,7 @@ export default function SignUpScreen() {
       style={styles.container}
       contentContainerStyle={styles.contentContainer}
       extraScrollHeight={20}
-      enableOnAndroid={true}
+      enableOnAndroid
     >
       <TouchableOpacity
         style={styles.backButton}
@@ -224,47 +188,6 @@ export default function SignUpScreen() {
             placeholder="Entrer votre nom"
             placeholderTextColor={Colors.gray600}
           />
-        </View>
-
-        {/* Date de naissance */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Date de naissance</Text>
-          <View style={styles.datePickerContainer}>
-            <DateTimePicker
-              value={formData.birthDate}
-              mode="date"
-              display="default"
-              onChange={handleDateChange}
-              maximumDate={maxAllowedDate}
-              locale="fr-FR"
-              themeVariant="light"
-            />
-          </View>
-        </View>
-
-        {/* Sexe */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Sexe</Text>
-          <View style={styles.sexContainer}>
-            <TouchableOpacity
-              style={[
-                styles.sexButton,
-                formData.sexe === 'homme' && styles.sexButtonSelected,
-              ]}
-              onPress={() => setFormData({ ...formData, sexe: 'homme' })}
-            >
-              <Text style={styles.sexButtonText}>Homme</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.sexButton,
-                formData.sexe === 'femme' && styles.sexButtonSelected,
-              ]}
-              onPress={() => setFormData({ ...formData, sexe: 'femme' })}
-            >
-              <Text style={styles.sexButtonText}>Femme</Text>
-            </TouchableOpacity>
-          </View>
         </View>
 
         {/* Téléphone */}
@@ -339,6 +262,21 @@ export default function SignUpScreen() {
           </View>
         </View>
 
+        {/* Checkbox + link to open terms modal */}
+        <View style={styles.checkboxContainer}>
+          <Checkbox
+            value={acceptedTerms}
+            onValueChange={setAcceptedTerms}
+            color={acceptedTerms ? Colors.primary : undefined}
+          />
+          <View style={styles.labelContainer}>
+            <Text style={styles.checkboxText}>J'accepte les </Text>
+            <TouchableOpacity onPress={openModal}>
+              <Text style={styles.linkText}>conditions d'utilisation</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         <TouchableOpacity style={styles.signupButton} onPress={handleSignUp}>
           <Text style={styles.signupButtonText}>Créer un compte</Text>
         </TouchableOpacity>
@@ -350,6 +288,9 @@ export default function SignUpScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Terms modal component */}
+      <TermsModal visible={modalVisible} onClose={closeModal} />
     </KeyboardAwareScrollView>
   );
 }
@@ -404,15 +345,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.gray200,
   },
-  datePickerContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderColor: Colors.gray200,
-    overflow: 'hidden',
-  },
   inputWithIconContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -434,6 +366,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.gray600,
     marginTop: 4,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  labelContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginLeft: 8,
+  },
+  checkboxText: {
+    fontSize: 14,
+    color: Colors.text,
+  },
+  linkText: {
+    fontSize: 14,
+    textDecorationLine: 'underline',
+    color: Colors.primary,
   },
   signupButton: {
     backgroundColor: Colors.primary,
@@ -463,25 +414,5 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontSize: 16,
     fontWeight: '600',
-  },
-  sexContainer: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  sexButton: {
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.gray200,
-    backgroundColor: Colors.white,
-    minWidth: 100,
-    alignItems: 'center',
-  },
-  sexButtonSelected: {
-    backgroundColor: Colors.secondary,
-    borderColor: Colors.secondary,
-  },
-  sexButtonText: {
-    color: Colors.text,
   },
 });

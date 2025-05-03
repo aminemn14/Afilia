@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Image,
   TextInput,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../constants/Colors';
@@ -26,7 +27,6 @@ export default function MessagesScreen() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const socketRef = useSocket();
 
-  // Formatage date
   const formatDateTime = (dateString: string) => {
     const dt = new Date(dateString);
     const day = dt.getDate().toString().padStart(2, '0');
@@ -34,10 +34,10 @@ export default function MessagesScreen() {
     return `${day}/${month}`;
   };
 
-  // Récupérer user, puis conversations ou amis
   useEffect(() => {
     (async () => {
       try {
+        // 1) Charger l'utilisateur
         const userString = await AsyncStorage.getItem('user');
         if (!userString) {
           setLoadingUser(false);
@@ -48,22 +48,37 @@ export default function MessagesScreen() {
         setCurrentUserId(currentId);
         setLoadingUser(false);
         if (!currentId) return;
-        // charger les conversations existantes
+
+        // 2) Charger les conversations existantes
         const convosResponse = await fetch(
           `${apiConfig.baseURL}/api/conversations/${currentId}`
         );
-        let conversationsData: Conversation[] = [];
+
+        let conversationsData: any = [];
         if (convosResponse.ok) {
-          conversationsData = await convosResponse.json();
+          const payload = await convosResponse.json();
+          // Supporte à la fois un array direct ou { conversations: [...] }
+          if (Array.isArray(payload)) {
+            conversationsData = payload;
+          } else if (Array.isArray(payload.conversations)) {
+            conversationsData = payload.conversations;
+          } else {
+            console.warn('Conversations payload inattendu :', payload);
+            conversationsData = [];
+          }
+        } else {
+          console.warn('Échec fetch conversations :', convosResponse.status);
         }
-        // si aucune, charger amis comme conversations
-        if (!conversationsData.length) {
+
+        // 3) Si aucune conversation, fallback sur les amis
+        if (conversationsData.length === 0) {
           const friendsResp = await fetch(
             `${apiConfig.baseURL}/api/friends/${currentId}`
           );
           if (friendsResp.ok) {
             const friendsData = await friendsResp.json();
             conversationsData = friendsData.map((f: any) => {
+              // Génère un ID stable trié
               const convoId = [currentId, f.friendId._id].sort().join('_');
               return {
                 id: convoId,
@@ -72,16 +87,22 @@ export default function MessagesScreen() {
                   name: `${f.friendId.firstname} ${f.friendId.lastname}`,
                   avatar: f.friendId.avatar,
                 },
-                lastMessage: 'Démarrer une conversation!',
+                lastMessage: 'Démarrer une conversation !',
                 updatedAt: new Date().toISOString(),
-                unread: true,
-              };
+                unread: false,
+              } as Conversation;
             });
+          } else {
+            console.warn(
+              'Échec fetch amis pour fallback :',
+              friendsResp.status
+            );
           }
         }
+
         setConversations(conversationsData);
       } catch (err: any) {
-        console.error('Erreur chargement messages:', err);
+        console.error('Erreur chargement messages :', err);
         setError(err);
       } finally {
         setLoading(false);
@@ -89,10 +110,33 @@ export default function MessagesScreen() {
     })();
   }, []);
 
-  // Si loading utilisateur
+  useEffect(() => {
+    if (!socketRef.current || !currentUserId) return;
+    socketRef.current.on('newMessage', (msg: any) => {
+      setConversations((prev) => {
+        const i = prev.findIndex((c) => c.id === msg.conversation_id);
+        if (i > -1) {
+          const updated = [...prev];
+          updated[i] = {
+            ...updated[i],
+            lastMessage: msg.content,
+            updatedAt: msg.created_at,
+            unread: msg.sender_id !== currentUserId,
+          };
+          // remonter en tête
+          const [convo] = updated.splice(i, 1);
+          return [convo, ...updated];
+        }
+        return prev;
+      });
+    });
+    return () => {
+      socketRef.current?.off('newMessage');
+    };
+  }, [socketRef, currentUserId]);
+
   if (loadingUser) return <LoadingContainer />;
 
-  // Vue invité
   if (!currentUserId) {
     return (
       <View style={styles.mustConnectContainer}>
@@ -114,22 +158,19 @@ export default function MessagesScreen() {
     );
   }
 
-  // Si chargement messages
   if (loading) return <LoadingContainer />;
   if (error) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Erreur : {error.message}</Text>
+        <Text style={styles.errorText}>Erreur : {error.message}</Text>
       </View>
     );
   }
 
-  // Filtrer
   const filteredConversations = conversations.filter((convo) =>
     convo.friend.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Affichage
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -163,7 +204,10 @@ export default function MessagesScreen() {
               onPress={() =>
                 router.push({
                   pathname: '/(chat)/conversation/[id]',
-                  params: { id: item.id, friend: JSON.stringify(item.friend) },
+                  params: {
+                    id: item.id,
+                    friend: JSON.stringify(item.friend),
+                  },
                 })
               }
             >
@@ -225,7 +269,7 @@ export default function MessagesScreen() {
             Aucune conversation pour l'instant
           </Text>
           <Text style={styles.emptyStateSubtext}>
-            Ajoutez des amis pour discuter !
+            Ajoutez des amis pour discuter !
           </Text>
         </View>
       )}
