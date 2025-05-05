@@ -173,6 +173,25 @@ export default function MessagesScreen() {
     };
   }, [socketRef, currentUserId]);
 
+  useEffect(() => {
+    if (!socketRef.current || !currentUserId) return;
+
+    const handleFriendRemoved = ({ friendId }: { friendId: string }) => {
+      const convoId = [currentUserId, friendId].sort().join('_');
+      setConversations((prev) => prev.filter((c) => c.id !== convoId));
+    };
+
+    socketRef.current.on('friendRemoved', handleFriendRemoved);
+
+    // Si tu émets un événement spécifique au blocage, gère-le de la même façon
+    // socketRef.current.on('friendBlocked', handleFriendRemoved);
+
+    return () => {
+      socketRef.current?.off('friendRemoved', handleFriendRemoved);
+      // socketRef.current?.off('friendBlocked', handleFriendRemoved);
+    };
+  }, [socketRef, currentUserId]);
+
   if (loadingUser) return <LoadingContainer />;
 
   if (!currentUserId) {
