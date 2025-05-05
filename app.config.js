@@ -16,15 +16,6 @@ export default {
       infoPlist: {
         NSPhotoLibraryUsageDescription:
           'Permet de sélectionner une photo de profil ou de partager des images dans les événements.',
-        NSAppTransportSecurity: {
-          NSExceptionDomains: {
-            'afilia-backend.vercel.app': {
-              NSIncludesSubdomains: true,
-              NSExceptionAllowsInsecureHTTPLoads: false,
-              NSExceptionRequiresForwardSecrecy: true,
-            },
-          },
-        },
       },
     },
     splash: {
