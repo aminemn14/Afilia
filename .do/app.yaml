@@ -23,6 +23,11 @@ services:
       repo: aminemn14/afilia
       branch: main
       deploy_on_push: false # on désactive l’auto-déploy, on passe par GH Actions
+    env:
+      DO_SPACES_ENDPOINT: ${DO_SPACES_ENDPOINT}
+      DO_SPACES_BUCKET: ${DO_SPACES_BUCKET}
+      DO_ACCESS_KEY: ${DO_ACCESS_KEY}
+      DO_SECRET_KEY: ${DO_SECRET_KEY}
 
 ingress:
   rules:
