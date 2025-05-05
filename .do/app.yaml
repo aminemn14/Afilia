@@ -2,7 +2,6 @@
 name: afilia-backend
 region: lon1
 
-# Alertes en cas d’erreur de déploiement ou de domaine
 alerts:
   - rule: DEPLOYMENT_FAILED
   - rule: DOMAIN_FAILED
