@@ -16,7 +16,7 @@ services:
     run_command: npm start
     http_port: 8070
     instance_count: 1
-    instance_size_slug: apps-s-1vcpu-1gb
+    instance_size_slug: apps-s-1vcpu-512mb
     source_dir: backend/
     github:
       repo: aminemn14/afilia
