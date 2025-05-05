@@ -1,3 +1,16 @@
+// On évite que connectDB appelle process.exit()
+import { vi } from 'vitest';
+vi.spyOn(process, 'exit').mockImplementation((code) => {
+  throw new Error(`process.exit called with ${code}`);
+});
+
+// Variables d’env requises par config/db et genericUpload
+process.env.MONGO_URI = 'mongodb://localhost:27017/test';
+process.env.DO_SPACES_BUCKET = 'dummy-bucket';
+process.env.DO_SPACES_ENDPOINT = 'dummy-endpoint';
+process.env.DO_ACCESS_KEY = 'dummy-key';
+process.env.DO_SECRET_KEY = 'dummy-secret';
+
 import { describe, it, expect, beforeAll, vi } from 'vitest';
 
 // ------------------------------------
