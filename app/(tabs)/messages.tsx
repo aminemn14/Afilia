@@ -135,6 +135,44 @@ export default function MessagesScreen() {
     };
   }, [socketRef, currentUserId]);
 
+  useEffect(() => {
+    if (!socketRef.current || !currentUserId) return;
+
+    const handleNewFriend = async ({ friendId }: { friendId: string }) => {
+      // 1) Récupère les infos du nouvel ami (nom, avatar,...)
+      const resp = await fetch(`${apiConfig.baseURL}/api/users/${friendId}`);
+      if (!resp.ok) return;
+      const friendData = await resp.json();
+
+      // 2) Génère un id de conversation stable
+      const convoId = [currentUserId, friendId].sort().join('_');
+
+      // 3) Crée l’objet Conversation
+      const newConvo: Conversation = {
+        id: convoId,
+        friend: {
+          id: friendData._id,
+          name: `${friendData.firstname} ${friendData.lastname}`,
+          avatar: friendData.avatar,
+        },
+        lastMessage: 'Démarrer une conversation !',
+        updatedAt: new Date().toISOString(),
+        unread: false,
+      };
+
+      // 4) Insère la nouvelle conversation en tête
+      setConversations((prev) => [newConvo, ...prev]);
+
+      // 5) (Optionnel) rejoins la room socket de cette conversation
+      socketRef.current?.emit('joinConversation', convoId);
+    };
+
+    socketRef.current.on('friendAdded', handleNewFriend);
+    return () => {
+      socketRef.current?.off('friendAdded', handleNewFriend);
+    };
+  }, [socketRef, currentUserId]);
+
   if (loadingUser) return <LoadingContainer />;
 
   if (!currentUserId) {
