@@ -1,6 +1,6 @@
+# .github/workflows/ci.yml
 name: CI
 
-# Déclenche le workflow sur les PR et les pushes vers main
 on:
   pull_request:
     branches:
@@ -11,7 +11,7 @@ on:
 
 jobs:
   test:
-    name: ▶️ Run Vitest suite
+    name: ▶️ Run full test suite
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
@@ -27,6 +27,6 @@ jobs:
         run: npm ci
         working-directory: ./backend
 
-      - name: Run tests
-        run: npm run test:app
+      - name: Run all tests
+        run: npm test
         working-directory: ./backend
