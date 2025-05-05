@@ -43,5 +43,4 @@ jobs:
         uses: digitalocean/app_action/deploy@v2
         with:
           token: ${{ secrets.API_DIGITAL_OCEAN }}
-          app_spec_location: '.do/app.yaml'
-          wait_for_completion: true # pour bloquer jusqu’à la fin du déploiement
+          app_name: afilia-backend
