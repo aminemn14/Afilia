@@ -17,7 +17,11 @@ export default function useSocket() {
       // connexion unique
       socketRef.current = io(apiConfig.baseURL, {
         transports: ['websocket'],
-        query: { userId },
+        secure: true,
+        reconnection: true,
+        reconnectionAttempts: 5,
+        timeout: 20000,
+        auth: { userId },
       });
     })();
 
