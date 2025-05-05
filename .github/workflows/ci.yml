@@ -1,13 +1,15 @@
-# .github/workflows/ci.yml
-name: CI
+name: CI & Deploy
 
 on:
-  pull_request:
-    branches:
-      - main
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
 
 jobs:
   test:
@@ -27,6 +29,19 @@ jobs:
         run: npm ci
         working-directory: ./backend
 
-      - name: Run all tests
+      - name: Run tests
         run: npm test
         working-directory: ./backend
+
+  deploy-app:
+    name: 🚀 Deploy to DigitalOcean App Platform
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Deploy the app
+        uses: digitalocean/app_action/deploy@v2
+        with:
+          token: ${{ secrets.API_DIGITAL_OCEAN }}
