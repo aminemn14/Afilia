@@ -10,6 +10,7 @@ process.env.DO_SPACES_BUCKET = 'dummy-bucket';
 process.env.DO_SPACES_ENDPOINT = 'dummy-endpoint';
 process.env.DO_ACCESS_KEY = 'dummy-key';
 process.env.DO_SECRET_KEY = 'dummy-secret';
+process.env.MESSAGE_SECRET = 'a'.repeat(64);
 
 import { describe, it, expect, beforeAll, vi } from 'vitest';
 
