@@ -20,12 +20,29 @@ services:
     github:
       repo: aminemn14/afilia
       branch: main
-      deploy_on_push: false # on désactive l’auto-déploy, on passe par GH Actions
-    env:
-      DO_SPACES_ENDPOINT: ${DO_SPACES_ENDPOINT}
-      DO_SPACES_BUCKET: ${DO_SPACES_BUCKET}
-      DO_ACCESS_KEY: ${DO_ACCESS_KEY}
-      DO_SECRET_KEY: ${DO_SECRET_KEY}
+      deploy_on_push: false
+    envs:
+      - key: MONGO_URI
+        scope: RUN_TIME
+        value: ${MONGO_URI}
+      - key: PORT
+        scope: RUN_TIME
+        value: ${PORT}
+      - key: MESSAGE_SECRET
+        scope: RUN_TIME
+        value: ${MESSAGE_SECRET}
+      - key: DO_ACCESS_KEY
+        scope: RUN_TIME
+        value: ${DO_ACCESS_KEY}
+      - key: DO_SECRET_KEY
+        scope: RUN_TIME
+        value: ${DO_SECRET_KEY}
+      - key: DO_SPACES_ENDPOINT
+        scope: RUN_TIME
+        value: ${DO_SPACES_ENDPOINT}
+      - key: DO_SPACES_BUCKET
+        scope: RUN_TIME
+        value: ${DO_SPACES_BUCKET}
 
 ingress:
   rules:
