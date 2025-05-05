@@ -6,6 +6,11 @@
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js",
+    "test": "vitest run",
+    "test:app": "vitest tests/app.test.js",
+    "test:config": "vitest tests/config.test.js",
+    "test:user": "vitest tests/controllers/user.test.js",
+    "test:message": "vitest tests/controllers/message.test.js",
     "vercel-start": "node app.js"
   },
   "dependencies": {
@@ -25,6 +30,9 @@
     "socket.io": "^4.8.1"
   },
   "devDependencies": {
-    "nodemon": "^2.0.22"
+    "@types/node": "^22.15.3",
+    "node-mocks-http": "^1.17.2",
+    "nodemon": "^2.0.22",
+    "vitest": "^3.1.2"
   }
 }

@@ -118,3 +118,9 @@ const PORT = process.env.PORT || 8070;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+module.exports = {
+  app,
+  encryptMessage,
+  decryptMessage,
+};
