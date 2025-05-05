@@ -1,4 +1,4 @@
-name: CI & Deploy
+name: CI & CD
 
 on:
   push:
@@ -16,8 +16,7 @@ jobs:
     name: ▶️ Run full test suite
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -38,10 +37,10 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
       - name: Deploy the app
         uses: digitalocean/app_action/deploy@v2
         with:
           token: ${{ secrets.API_DIGITAL_OCEAN }}
+          app_spec_location: '.do/app.yaml'
