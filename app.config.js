@@ -10,6 +10,10 @@ export default {
     scheme: 'myapp',
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,
+    android: {
+      package: 'com.kodio.afilia',
+      versionCode: 1,
+    },
     ios: {
       bundleIdentifier: 'com.kodio.afilia',
       supportsTablet: true,

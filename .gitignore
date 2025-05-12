@@ -38,3 +38,6 @@ yarn-error.*
 
 # build
 eas.json
+
+# android
+api-android.json
