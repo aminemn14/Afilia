@@ -5,11 +5,13 @@ export default {
     name: 'Afilia',
     slug: 'afilia',
     version: '1.0.1',
+    owner: 'aminemn14',
     orientation: 'portrait',
     icon: './assets/images/icon.png',
     scheme: 'myapp',
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,
+
     android: {
       package: 'com.kodio.afilia',
       versionCode: 1,
@@ -26,6 +28,12 @@ export default {
       image: './assets/images/splash.png',
       resizeMode: 'contain',
       backgroundColor: '#ffffff',
+    },
+    updates: {
+      url: 'https://u.expo.dev/6a691b60-e448-4b42-a5ed-801356d8c5ec',
+    },
+    runtimeVersion: {
+      policy: 'appVersion',
     },
     extra: {
       apiBaseUrl: process.env.API_BASE_URL,
