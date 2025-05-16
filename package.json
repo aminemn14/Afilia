@@ -47,6 +47,7 @@
     "expo-status-bar": "~2.2.3",
     "expo-symbols": "~0.4.4",
     "expo-system-ui": "~5.0.7",
+    "expo-updates": "~0.28.12",
     "expo-web-browser": "~14.1.6",
     "jwt-decode": "^3.1.2",
     "lottie-react-native": "^7.2.2",
@@ -66,9 +67,7 @@
     "react-native-vector-icons": "^10.2.0",
     "react-native-web": "^0.20.0",
     "react-native-webview": "13.13.5",
-    "socket.io-client": "^4.8.1",
-    "expo-updates": "~0.28.12",
-    "expo-dev-client": "~5.1.8"
+    "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
