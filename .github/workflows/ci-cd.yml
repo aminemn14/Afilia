@@ -4,12 +4,13 @@ on:
   push:
     branches:
       - main
-  pull_request:
+  pull_request_target:
     branches:
       - main
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
   test:
@@ -35,9 +36,13 @@ jobs:
   deploy-app:
     name: 🚀 Deploy to DigitalOcean App Platform
     needs: test
+    if: github.actor == 'dependabot[bot]' || github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout main branch (for secure secrets access)
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.base.ref || 'main' }}
 
       - name: Deploy the app
         uses: digitalocean/app_action/deploy@v2
