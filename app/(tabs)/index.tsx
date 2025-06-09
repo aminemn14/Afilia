@@ -103,14 +103,14 @@ export default function HomeScreen() {
   const filteredEvents = events.filter((event) => {
     if (new Date(event.start_date) < now) return false;
 
-    const matchesSearch = event.name
+    const eventsSearch = event.name
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
-    const matchesType =
+    const eventsType =
       selectedType === 'Tous' ||
       event.event_type.toLowerCase() === selectedType.toLowerCase();
 
-    return matchesSearch && matchesType;
+    return eventsSearch && eventsType;
   });
 
   const renderEventCard = ({ item, index }: { item: any; index: number }) => {
