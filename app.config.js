@@ -22,6 +22,10 @@ export default {
       infoPlist: {
         NSPhotoLibraryUsageDescription:
           'Permet de sélectionner une photo de profil ou de partager des images dans les événements.',
+        NSLocationWhenInUseUsageDescription:
+          'Nous avons besoin de votre position pour afficher les événements autour de vous.',
+        NSLocationAlwaysAndWhenInUseUsageDescription:
+          'Nous utilisons votre position même en arrière-plan pour vous montrer où vous êtes sur la carte.',
       },
     },
     splash: {
