@@ -41,3 +41,7 @@ eas.json
 
 # android
 api-android.json
+android/
+
+# ios
+ios/
