@@ -299,6 +299,9 @@ const ChatConversation = () => {
             placeholderTextColor={Colors.gray400}
             value={inputMessage}
             onChangeText={setInputMessage}
+            returnKeyType="send"
+            returnKeyLabel="Envoyer"
+            onSubmitEditing={sendMessage}
           />
           <TouchableOpacity onPress={sendMessage} style={styles.sendButton}>
             <Ionicons name="send" size={24} color={Colors.white} />
