@@ -20,6 +20,15 @@ import { Location, Event } from '../types';
 
 import LoadingContainer from '../components/LoadingContainer';
 
+const TYPE_MAP: Record<string, string> = {
+  Tous: '',
+  Concert: 'concert',
+  Théâtre: 'theatre',
+  Exposition: 'exposition',
+  Musée: 'museum',
+  Chorale: 'chorale',
+};
+
 const EVENT_TYPES = [
   'Tous',
   'Concert',
@@ -37,17 +46,14 @@ function getIconForEventType(
   if (!eventTypes || eventTypes.length !== 1) {
     return <Ionicons name="location-outline" size={size} color={color} />;
   }
-  const type = eventTypes[0].toLowerCase();
-  switch (type) {
+  switch (eventTypes[0].toLowerCase()) {
     case 'chorale':
       return (
         <Ionicons name="musical-notes-outline" size={size} color={color} />
       );
-    case 'musée':
-    case 'museum':
+    case 'museum': // plus besoin de 'musée'
       return <Ionicons name="business-outline" size={size} color={color} />;
-    case 'théâtre':
-    case 'theatre':
+    case 'theatre': // pour 'Théâtre'
       return <Ionicons name="pricetag-outline" size={size} color={color} />;
     case 'concert':
       return <Ionicons name="mic-outline" size={size} color={color} />;
@@ -108,9 +114,10 @@ export default function MapScreen() {
   const filteredLocations = locations.filter((loc) => {
     const evs = getEventsAtLocation(loc._id || loc.id || '');
     if (selectedType === 'Tous') return true;
-    return evs.some(
-      (e) => e.event_type.toLowerCase() === selectedType.toLowerCase()
-    );
+
+    const mappedType = TYPE_MAP[selectedType as keyof typeof TYPE_MAP];
+
+    return evs.some((e) => e.event_type.toLowerCase() === mappedType);
   });
 
   if (loading) {

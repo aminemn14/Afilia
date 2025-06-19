@@ -18,6 +18,15 @@ import apiConfig from '@/config/apiConfig';
 import { User } from '../types';
 import LoadingContainer from '../components/LoadingContainer';
 
+const TYPE_MAP: Record<string, string> = {
+  Tous: '',
+  Concert: 'concert',
+  Théâtre: 'theatre',
+  Exposition: 'exposition',
+  Musée: 'museum',
+  Chorale: 'chorale',
+};
+
 const EVENT_TYPES = [
   'Tous',
   'Concert',
@@ -103,26 +112,32 @@ export default function HomeScreen() {
   const filteredEvents = events.filter((event) => {
     if (new Date(event.start_date) < now) return false;
 
-    const eventsSearch = event.name
+    const matchesSearch = event.name
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
-    const eventsType =
-      selectedType === 'Tous' ||
-      event.event_type.toLowerCase() === selectedType.toLowerCase();
 
-    return eventsSearch && eventsType;
+    const mappedType = TYPE_MAP[selectedType as keyof typeof TYPE_MAP];
+    const matchesType =
+      selectedType === 'Tous'
+        ? true
+        : event.event_type.toLowerCase() === mappedType;
+
+    return matchesSearch && matchesType;
   });
 
   const renderEventCard = ({ item, index }: { item: any; index: number }) => {
     const location = getLocationById(item.location_id, locations);
     const soldOut = item.remaining_participants === 0;
 
+    const isLastWithExtraMargin =
+      filteredEvents.length >= 3 && index === filteredEvents.length - 1;
+
     return (
       <MotiView
         from={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: index * 100 }}
-        style={styles.card}
+        style={[styles.card, isLastWithExtraMargin && { marginBottom: 120 }]}
       >
         <View style={styles.cardHeader}>
           <Text style={styles.eventName}>{item.name}</Text>
