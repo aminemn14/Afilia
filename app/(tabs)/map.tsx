@@ -9,6 +9,7 @@ import {
   FlatList,
 } from 'react-native';
 import MapView, { Marker, Callout } from 'react-native-maps';
+import * as MyLocation from 'expo-location';
 import { MotiView, AnimatePresence } from 'moti';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -73,6 +74,27 @@ export default function MapScreen() {
     null
   );
   const [selectedType, setSelectedType] = useState('Tous');
+  const [userLocation, setUserLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [locError, setLocError] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const { status } = await MyLocation.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setLocError('Permission refusée');
+        return;
+      }
+      const {
+        coords: { latitude, longitude },
+      } = await MyLocation.getCurrentPositionAsync({
+        accuracy: MyLocation.Accuracy.High,
+      });
+      setUserLocation({ latitude, longitude });
+    })();
+  }, []);
 
   useEffect(() => {
     const fetchLocations = async () => {
@@ -133,11 +155,13 @@ export default function MapScreen() {
       <MapView
         style={styles.map}
         initialRegion={{
-          latitude: 50.63123,
-          longitude: 3.0524,
+          latitude: userLocation?.latitude || 50.63123,
+          longitude: userLocation?.longitude || 3.0524,
           latitudeDelta: 0.0922,
           longitudeDelta: 0.0421,
         }}
+        showsUserLocation={true}
+        followsUserLocation={true}
       >
         {filteredLocations.map((loc) => {
           const locId = loc._id || loc.id;
@@ -182,6 +206,11 @@ export default function MapScreen() {
           );
         })}
       </MapView>
+      {locError && (
+        <View style={styles.locError}>
+          <Text style={{ color: 'red' }}>{locError}</Text>
+        </View>
+      )}
 
       <View style={styles.filterContainer}>
         <FlatList
@@ -460,5 +489,13 @@ const styles = StyleSheet.create({
   },
   disabledJoinButtonText: {
     color: Colors.gray500,
+  },
+  locError: {
+    position: 'absolute',
+    top: 10,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    padding: 8,
+    borderRadius: 8,
   },
 });
