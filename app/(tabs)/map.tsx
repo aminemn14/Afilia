@@ -161,7 +161,6 @@ export default function MapScreen() {
           longitudeDelta: 0.0421,
         }}
         showsUserLocation={true}
-        followsUserLocation={true}
       >
         {filteredLocations.map((loc) => {
           const locId = loc._id || loc.id;
