@@ -138,6 +138,8 @@ export default function HomeScreen() {
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: index * 100 }}
         style={[styles.card, isLastWithExtraMargin && { marginBottom: 120 }]}
+        accessible={true}
+        accessibilityLabel={`Événement ${item.name}, type ${item.event_type}, ${item.remaining_participants} places restantes`}
       >
         <View style={styles.cardHeader}>
           <Text style={styles.eventName}>{item.name}</Text>
@@ -164,6 +166,16 @@ export default function HomeScreen() {
             }
           }}
           disabled={soldOut}
+          accessible={true}
+          accessibilityLabel={`Bouton ${
+            soldOut ? 'complet' : 'participer à l’événement'
+          } ${item.name}`}
+          accessibilityState={{ disabled: soldOut }}
+          accessibilityHint={
+            soldOut
+              ? 'Aucune place disponible'
+              : 'Appuyez pour voir les détails et rejoindre'
+          }
         >
           <Text
             style={[
@@ -193,6 +205,9 @@ export default function HomeScreen() {
             <TouchableOpacity
               style={styles.newEventButton}
               onPress={() => router.push('/(admin)/addLocation')}
+              accessibilityLabel="Ajouter un nouveau lieu"
+              accessibilityRole="button"
+              accessibilityHint="Navigue vers la page d’ajout de lieu"
             >
               <Ionicons name="add-outline" size={18} color={Colors.white} />
             </TouchableOpacity>
@@ -212,6 +227,8 @@ export default function HomeScreen() {
             placeholderTextColor={Colors.gray600}
             value={searchQuery}
             onChangeText={setSearchQuery}
+            accessibilityLabel="Champ de recherche d'événement"
+            accessibilityHint="Entrez un mot-clé pour filtrer les événements"
           />
         </View>
       </View>
@@ -229,6 +246,9 @@ export default function HomeScreen() {
                 selectedType === item && styles.filterButtonActive,
               ]}
               onPress={() => setSelectedType(item)}
+              accessibilityLabel={`Filtrer par ${item}`}
+              accessibilityState={{ selected: selectedType === item }}
+              accessibilityRole="button"
             >
               <Text
                 style={[

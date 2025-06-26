@@ -189,7 +189,12 @@ export default function MapScreen() {
                   </View>
                 </MotiView>
               </AnimatePresence>
-              <Callout>
+              <Callout
+                tooltip={false}
+                accessibilityLabel={`Lieu ${loc.name || 'sans nom'}, ${
+                  loc.address
+                }, ${loc.city} ${loc.zipcode}`}
+              >
                 <View style={styles.callout}>
                   <Text style={styles.calloutTitle}>
                     {loc.name || 'Lieu sans nom'}
@@ -224,6 +229,9 @@ export default function MapScreen() {
                 selectedType === item && styles.filterButtonActive,
               ]}
               onPress={() => setSelectedType(item)}
+              accessibilityLabel={`Filtrer par ${item}`}
+              accessibilityState={{ selected: selectedType === item }}
+              accessibilityRole="button"
             >
               <Text
                 style={[
@@ -245,6 +253,10 @@ export default function MapScreen() {
           from={{ translateY: 300 }}
           animate={{ translateY: 0 }}
           exit={{ translateY: 300 }}
+          accessible={true}
+          accessibilityLabel={`Détails du lieu ${
+            selectedLocation.name || 'Lieu sans nom'
+          }, situé à ${selectedLocation.city}`}
         >
           <View style={styles.locationHeader}>
             <Text style={styles.locationName}>
@@ -299,6 +311,16 @@ export default function MapScreen() {
                           router.push(`/(events)/event/${ev._id || ev.id}`)
                         }
                         disabled={soldOut}
+                        accessibilityLabel={`Bouton ${
+                          soldOut ? 'complet' : 'participer à l’événement'
+                        } ${ev.name}`}
+                        accessibilityState={{ disabled: soldOut }}
+                        accessibilityRole="button"
+                        accessibilityHint={
+                          soldOut
+                            ? 'Aucune place disponible'
+                            : 'Appuyez pour voir les détails'
+                        }
                       >
                         <Text
                           style={[

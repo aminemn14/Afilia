@@ -208,6 +208,9 @@ export default function MessagesScreen() {
         <TouchableOpacity
           style={styles.connectButton}
           onPress={() => router.replace('/(auth)/welcome')}
+          accessibilityLabel="Se connecter"
+          accessibilityRole="button"
+          accessibilityHint="Appuyez pour accéder à la page de connexion"
         >
           <Text style={styles.connectButtonText}>Se connecter</Text>
         </TouchableOpacity>
@@ -236,6 +239,9 @@ export default function MessagesScreen() {
           <TouchableOpacity
             style={styles.friendListButton}
             onPress={() => router.push('/(friends)')}
+            accessibilityLabel="Voir la liste des amis"
+            accessibilityRole="button"
+            accessibilityHint="Affiche vos amis pour démarrer une nouvelle conversation"
           >
             <Ionicons name="people-outline" size={24} color={Colors.white} />
           </TouchableOpacity>
@@ -247,6 +253,8 @@ export default function MessagesScreen() {
             placeholderTextColor={Colors.gray400}
             value={searchQuery}
             onChangeText={setSearchQuery}
+            accessibilityLabel="Champ de recherche"
+            accessibilityHint="Tapez le nom d’un ami pour filtrer les conversations"
           />
         )}
       </View>
@@ -267,6 +275,13 @@ export default function MessagesScreen() {
                   },
                 })
               }
+              accessibilityLabel={`Conversation avec ${item.friend.name}`}
+              accessibilityHint={
+                item.unread
+                  ? 'Nouveau message non lu. Appuyez pour ouvrir.'
+                  : 'Appuyez pour ouvrir la conversation.'
+              }
+              accessibilityRole="button"
             >
               <View style={styles.avatarContainer}>
                 <Image

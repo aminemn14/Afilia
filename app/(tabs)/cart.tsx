@@ -9,7 +9,6 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
-  Button,
 } from 'react-native';
 import { MotiView } from 'moti';
 import { Ionicons } from '@expo/vector-icons';
@@ -180,6 +179,9 @@ export default function CartScreen() {
         <TouchableOpacity
           style={styles.connectButton}
           onPress={() => router.replace('/(auth)/welcome')}
+          accessibilityLabel="Se connecter"
+          accessibilityRole="button"
+          accessibilityHint="Accédez à l’écran de connexion"
         >
           <Text style={styles.connectButtonText}>Se connecter</Text>
         </TouchableOpacity>
@@ -229,6 +231,8 @@ export default function CartScreen() {
         <TouchableOpacity
           onPress={() => removeEvent(item.id)}
           style={styles.deleteButton}
+          accessibilityLabel={`Supprimer ${item.name} du panier`}
+          accessibilityRole="button"
         >
           <Ionicons name="trash-outline" size={20} color={Colors.error} />
         </TouchableOpacity>
@@ -261,6 +265,13 @@ export default function CartScreen() {
           <TouchableOpacity
             onPress={() => setRecapExpanded((e) => !e)}
             style={styles.recapToggleContainer}
+            accessibilityLabel={
+              recapExpanded
+                ? 'Masquer le récapitulatif'
+                : 'Afficher le récapitulatif'
+            }
+            accessibilityRole="button"
+            accessibilityHint="Appuyez pour afficher ou masquer le détail des articles"
           >
             <Text style={styles.recapToggleText}>
               {recapExpanded
@@ -325,6 +336,10 @@ export default function CartScreen() {
                         setCashbackToUse(cleaned);
                       }}
                       placeholder="Montant à utiliser"
+                      accessibilityLabel="Saisir le montant de cashback à utiliser"
+                      accessibilityHint={`Montant maximum utilisable : ${maxCashback.toFixed(
+                        2
+                      )} euros`}
                     />
                     <Text style={styles.cashbackMax}>
                       / {maxCashback.toFixed(2)}
@@ -335,6 +350,9 @@ export default function CartScreen() {
                     <TouchableOpacity
                       style={styles.validateButton}
                       onPress={validateCashback}
+                      accessibilityLabel="Valider le montant de cashback"
+                      accessibilityRole="button"
+                      accessibilityHint="Appuyez pour confirmer le montant que vous souhaitez utiliser"
                     >
                       <Text style={styles.validateButtonText}>
                         Valider cashback
@@ -368,6 +386,11 @@ export default function CartScreen() {
                   },
                 })
               }
+              accessibilityLabel="Passer au paiement"
+              accessibilityRole="button"
+              accessibilityHint={`Appuyez pour payer ${finalAmount.toFixed(
+                2
+              )} euros`}
             >
               <Text style={styles.checkoutButtonText}>Passer au paiement</Text>
             </TouchableOpacity>

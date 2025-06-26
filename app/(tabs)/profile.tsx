@@ -202,6 +202,9 @@ export default function ProfileScreen() {
         <TouchableOpacity
           style={styles.connectButton}
           onPress={() => router.replace('/(auth)/welcome')}
+          accessibilityLabel="Se connecter"
+          accessibilityRole="button"
+          accessibilityHint="Accédez à l’écran de connexion"
         >
           <Text style={styles.connectButtonText}>Se connecter</Text>
         </TouchableOpacity>
@@ -215,6 +218,9 @@ export default function ProfileScreen() {
         <TouchableOpacity
           style={styles.headerButton}
           onPress={() => router.push('/(settingsProfile)')}
+          accessibilityLabel="Modifier mon profil"
+          accessibilityRole="button"
+          accessibilityHint="Appuyez pour accéder à l’écran de modification du profil"
         >
           <Ionicons name="create-outline" size={24} color={Colors.primary} />
         </TouchableOpacity>
@@ -229,6 +235,8 @@ export default function ProfileScreen() {
                 : require('@/assets/images/avatar-default.png')
             }
             style={styles.avatar}
+            accessible={true}
+            accessibilityLabel={`Photo de profil de ${user.firstname} ${user.lastname}`}
           />
         </View>
         <Text style={styles.name}>
@@ -266,6 +274,9 @@ export default function ProfileScreen() {
 
       <TouchableOpacity
         onPress={() => router.push('/(settingsProfile)/invitations')}
+        accessibilityLabel={`Invitations en attente : ${invitationCount}`}
+        accessibilityRole="button"
+        accessibilityHint="Appuyez pour gérer vos invitations d’amis"
       >
         <View style={[styles.infoContainer, styles.noMargin]}>
           <View style={styles.invitationContainer}>
@@ -278,11 +289,22 @@ export default function ProfileScreen() {
         </View>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+      <TouchableOpacity
+        style={styles.logoutButton}
+        onPress={handleLogout}
+        accessibilityLabel="Déconnexion"
+        accessibilityRole="button"
+        accessibilityHint="Appuyez pour vous déconnecter"
+      >
         <Text style={styles.logoutButtonText}>Déconnexion</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={handleDeleteAccount}>
+      <TouchableOpacity
+        onPress={handleDeleteAccount}
+        accessibilityLabel="Supprimer mon compte"
+        accessibilityRole="button"
+        accessibilityHint="Appuyez pour lancer la suppression de votre compte"
+      >
         <Text style={styles.deleteAccountText}>Supprimer mon compte</Text>
       </TouchableOpacity>
     </ScrollView>

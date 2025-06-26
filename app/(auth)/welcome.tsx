@@ -25,7 +25,11 @@ export default function WelcomeScreen() {
           </Text>
         </View>
 
-        <View style={styles.features}>
+        <View
+          style={styles.features}
+          accessible={true}
+          accessibilityLabel="Animation d’accueil d’Afilia"
+        >
           <LottieView
             source={welcomeAnimation}
             autoPlay
@@ -45,18 +49,29 @@ export default function WelcomeScreen() {
           <TouchableOpacity
             style={[styles.button, styles.loginButton]}
             onPress={() => router.push('/login')}
+            accessibilityLabel="Se connecter"
+            accessibilityRole="button"
+            accessibilityHint="Accédez à l’écran de connexion"
           >
             <Text style={styles.buttonText}>Connexion</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.button, styles.signupButton]}
             onPress={() => router.push('/signup')}
+            accessibilityLabel="S’inscrire"
+            accessibilityRole="button"
+            accessibilityHint="Accédez à l’écran de création de compte"
           >
             <Text style={[styles.buttonText, styles.signupButtonText]}>
               S'inscrire
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/(tabs)')}>
+          <TouchableOpacity
+            onPress={() => router.push('/(tabs)')}
+            accessibilityLabel="Continuer sans se connecter"
+            accessibilityRole="button"
+            accessibilityHint="Accédez à l’application sans vous identifier"
+          >
             <Text style={styles.withoutText}>Continuer sans s'identifier</Text>
           </TouchableOpacity>
         </View>
