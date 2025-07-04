@@ -4,7 +4,7 @@ export default {
   expo: {
     name: 'Afilia',
     slug: 'afilia',
-    version: '1.0.2',
+    version: '1.0.3',
     owner: 'aminemn14',
     orientation: 'portrait',
     icon: './assets/images/icon.png',
