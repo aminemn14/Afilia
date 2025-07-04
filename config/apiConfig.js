@@ -1,7 +1,9 @@
 import Constants from 'expo-constants';
 
+const extra = Constants.expoConfig?.extra ?? Constants.manifest?.extra;
+
 const apiConfig = {
-  baseURL: Constants.expoConfig.extra.apiBaseUrl,
+  baseURL: extra?.apiBaseUrl,
 };
 
 export default apiConfig;
